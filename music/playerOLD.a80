@@ -147,7 +147,7 @@ currentCh:    db #36
 ;fakeOrnament: db +1,+19,0,0,0,0,0,0
 ;fakeInstrument: dw 2000,3000,2000,-2000,-3000,-2000
 ;какую ноту сувать в какой канал
-NB_SIZE=9
+NB_SIZE=8
 notesBuffer:
         dup CHANNELS
         db 0;0-канал выключен 1-канал включен
@@ -161,13 +161,11 @@ notesBuffer:
         db 0;sample start +6
         db 0;sample counter внутренний счетчик по сэмплу,тут или 0 при ините орнамента или тот который командой 4 задали, loop,end позиции берем из инструмента   +7
 ;===========================================================================================
-	db 0; for tone mask
         edup
         
 vktProcess:    
 N=0
 PORT=#0b
-CH=#36
     dup CHANNELS  
     ;если канал отключен то скипаем
     ld a,(notesBuffer+N*NB_SIZE) : or a : jp z,1f
@@ -263,22 +261,6 @@ CH=#36
     ld l,a : ld h,0 : add hl,de : ex hl,de
     ld hl,(samplesList) : add hl,de    
     ld c,(hl) : inc hl : ld b,(hl)    
-;==============================================
-    ld a,#ff : cp c : jp nz,4f
-    cp b : jp nz,4f
- 
-   
-    ld a,(notesBuffer+N*NB_SIZE+8) : or a : jp nz,3f
-    ld (notesBuffer+N*NB_SIZE+8),a
-    ld a,CH : out (08),a;dis chan
-3:
-    pop hl : jp 1f    
-4:
-    ld a,(notesBuffer+N*NB_SIZE+8) : or a : jp z,2f
-    xor a : ld (notesBuffer+N*NB_SIZE+8),a
-    ld a,CH : out (08),a;enable chan
-;==============================================
-
 2:
     pop hl;восстанавливаем частоту
     add hl,bc;докидываем смещение из инструмента
@@ -291,8 +273,7 @@ CH=#36
     ;OUT  (PORT),a
 1:
 N=N+1
-PORT=PORT-1   
-CH=CH+#40 
+PORT=PORT-1    
     edup
     ret
 
@@ -322,9 +303,6 @@ vktDoTick:
     ld hl,notesBuffer+0*NB_SIZE+2 : ld (chOrnaments),hl
     ld hl,notesBuffer+0*NB_SIZE+5 : ld (chSamples),hl
     ld a,#36 : ld (currentCh),a
-
-;    xor a : ld (notesBuffer+0*NB_SIZE+8),a
-
     call vktPlayCh
 	IF CHANNELS>1
     ;ch 2
@@ -332,9 +310,6 @@ vktDoTick:
     ld hl,notesBuffer+1*NB_SIZE+2 : ld (chOrnaments),hl
     ld hl,notesBuffer+1*NB_SIZE+5 : ld (chSamples),hl
     ld a,#76 : ld (currentCh),a
-
-;    xor a : ld (notesBuffer+1*NB_SIZE+8),a
-
     call vktPlayCh
 	ENDIF
 
@@ -343,9 +318,6 @@ vktDoTick:
     ld hl,notesBuffer+2*NB_SIZE : ld (chBuffer),hl
     ld hl,notesBuffer+2*NB_SIZE+2 : ld (chOrnaments),hl
     ld hl,notesBuffer+2*NB_SIZE+5 : ld (chSamples),hl
-
- ;   xor a : ld (notesBuffer+2*NB_SIZE+8),a
-
     ld a,#b6 : ld (currentCh),a
     call vktPlayCh
 	ENDIF
@@ -411,7 +383,7 @@ chOrnaments equ $+1
     cp cmdSample : jp nz,1f    
     ;читаем номер орнамента и включаем его к текущему каналу
     inc hl : ld a,(hl) : inc hl : ld (currentTick),hl    
-    ;Сохраняем номер сэмпла
+    //Сохраняем номер сэмпла
 chSamples equ $+1
     ld hl,00000 : ld (hl),a
     ;мигнём номером сэмпла
@@ -458,14 +430,7 @@ chBuffer EQU $+1
     ld a,(hl);берем оффсет
     inc hl
     ld (hl),a;сохраняем позицию старта для офсета
-;    ld (hl),0;!!!!!!!!!!!!!!!!!!!!!!!     
-    ;И ДЛЯ ИНСТРУМЕНТА
-    inc hl : inc hl    
-    ld a,(hl);берем оффсет
-    inc hl
-    ld (hl),a;сохраняем позицию старта для офсета
-    ;ld (hl),0;!!!!!!!!!!!!!!!!!!!!!!!     
-    ;inc hl : ld (hl),0
+    ;ld (hl),0;!!!!!!!!!!!!!!!!!!!!!!!    
 nextNote:
     ;переходим дальше
     ld hl,(currentTick) : inc hl : ld (currentTick),hl
