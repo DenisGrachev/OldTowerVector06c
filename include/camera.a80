@@ -165,10 +165,7 @@ K=K+1
 putTopPixelLineFast:    
 	;get tile line
 	ld a,(Scroll) : inc a : or a :  and 7 : add a,a : add a,a : ld c,a
-	
-;	ld hl,(globalPointer) : add hl,hl : ex de,hl
-;	ld hl,scrollTable : add hl,de		
-;	ld a,(hl) : inc hl : ld h,(hl) : ld l,a; hl now points to tile in map
+
 
 	ld hl,(globalPointer)
 	dec hl
@@ -176,13 +173,6 @@ putTopPixelLineFast:
  	or a : ld a,h : rra : ld h,a
 	ld a,l : rra  : or a : ;ld l,a
 	rra : or a : rra : or a : ld l,a
-
-
-	;or a : ld a,h : rra : ld h,a
-	;ld a,l : rra  : or a : ld l,a
-
-	;or a : ld a,h : rra : ld h,a
-	;ld a,l : rra  : or a : ld l,a
 
 	;x14
 	add hl,hl : push hl : add hl,hl : push hl : add hl,hl : pop de : add hl,de : pop de : add hl,de
@@ -242,7 +232,6 @@ BOTTOM=(50-27)*8
 	//no continue
 6:			
 	call putBottomPixelLineFast
-;	ld a,(globalPointer) : inc a : ld (globalPointer),a
 	ld hl,(globalPointer) : inc hl : ld (globalPointer),hl		
 	ld a,(Scroll) : dec a :  ld (Scroll),a	
 

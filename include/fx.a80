@@ -22,9 +22,7 @@ resetFXS:
     ret
 
 doFXS:
-    ;ld a,0 : inc a : and 1 : ld (doFXS+1),a : or a : ret z    
-
-    
+       
 N=0
     dup 24
     ld hl,(fxList+N*FX_SIZE)

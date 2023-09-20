@@ -3,20 +3,8 @@
 palette:
     incbin "res\tiles.png.pal"
 
-
-
 ;and table
 andTable:     
-
-    ;db 11111111b
-    ;db 11111110b
-    ;db 11111100b
-    ;db 11111000b
-    ;db 11110000b
-    ;db 11100000b
-    ;db 11000000b
-    ;db 10000000b
-    ;db 00000000b
     
      db 11111111b
      db 11011111b
@@ -27,13 +15,6 @@ andTable:
      db 11000000b
      db 10000000b
      db 00000000b       
-
-
-;    db 11110000b
-;    db 11100000b
-;    db 11000000b
-;    db 10000000b
-;    db 00000000b
 
 initFadeIN:
     ;init counter

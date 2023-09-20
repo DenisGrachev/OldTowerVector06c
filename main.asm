@@ -13,8 +13,9 @@ start:
 	ld hl,ints : ld (0039h),hl		
 	jp main
 	
-MUTE_MUSIC = 0
-SPRITES_LIMIT_TO_COINS = 16	
+MUTE_MUSIC = 0 ;отключить музыку в игре или нет
+SPRITES_LIMIT_TO_COINS = 16	;при достижении какого колличества спрайтов отключается анимация монеток
+
 	include "include\system.a80"
 	include "include\tables.a80"
 	include "include\intro.a80"
@@ -57,12 +58,9 @@ GS_INIT_OUTRO = 7
 gameState:	db GS_INIT_MAIN_MENU
 nextGameState: db GS_RESTART_LEVEL
 
-;gameState:	db GS_INIT_OUTRO
-;nextGameState: db GS_OUTRO
-
-
 main:
 	ld sp,100h	
+;для БЛК+СБРОС
 ;========================================================
 	xor a : ld (cameraSpeed),a : ld (ss+1),a :  ld (pfCount),a : ld a,64 : ld (pfDelta),a	
 	ld a,GS_INIT_MAIN_MENU : ld (gameState),a
@@ -80,9 +78,7 @@ main:
 	call startGame
 
 mainLoop:	
-	dup 1
 	halt
-	edup			
 	ld a,(gameState)
 	cp GS_GAMEPLAY : jp z,doGameplay
 	cp GS_WAIT_FIRE: jp z,waitFireButton
@@ -97,9 +93,9 @@ mainLoop:
 
 	savebin "ot.rom",begin,$-begin
 
-	        IF (_ERRORS = 0)                                 					
-			SHELLEXEC "!run.bat"	
-			ENDIF
+;	        IF (_ERRORS = 0)                                 					
+;			SHELLEXEC "!run.bat"	
+;			ENDIF
 
 
 

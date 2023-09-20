@@ -4,8 +4,7 @@ gameLogo:   incbin "res\logo.png.logo.img"
 
 initMainMenu:
     call fadeOUTOUT
-    ;call initFadeOUT
-    
+        
     ;edit push fire position
     ld a,40
     ld (pfDelta),a
@@ -13,11 +12,7 @@ initMainMenu:
     ld de,gameLogo : ld bc,32768 : call dzx0 
     ;darw some menu text
     ;ld hl,menuText : call drawText
-
-    ;draw zero level
-    ;xor a : ld (currentLevel),a : ld (pfCount),a
-    ;call drawLevel
-
+    
     ;init fade in and switch to menu loop
     call initFadeIN
     ld a,GS_MAIN_MENU : ld (gameState),a

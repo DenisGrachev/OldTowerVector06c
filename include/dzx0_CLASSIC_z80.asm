@@ -1,5 +1,6 @@
 ; -----------------------------------------------------------------------------
 ; ZX0 8080 decoder by Ivan Gorodetsky - OLD FILE FORMAT v1 
+; sjasmPlus verison by Denis Grachev
 ; Based on ZX0 z80 decoder by Einar Saukas
 ; v1 (2021-02-15) - 103 bytes forward / 100 bytes backward
 ; v2 (2021-02-17) - 101 bytes forward / 100 bytes backward

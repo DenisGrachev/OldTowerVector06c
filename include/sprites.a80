@@ -100,14 +100,7 @@ tile:	ld l,0
 	;save what to draw
 	ld (hl),e : inc l : ld (hl),d
 	
-	;ok, now put this tile to tile map
 	
-
-
-    ;get draw addr and attach to sprite
-   ; ld hl,(coinsList+COIN_SIZE*N+2)
-   ; dec l;can be fixed from preproc or move everything up????????????????????
-   ; ld (spritesList+N*SPRITE_SIZE+2),hl
 
 	;move render pointer only if drawed tile
 	ld hl,(renderPointer) : ld de,SPRITE_SIZE : add hl,de : ld (renderPointer),hl

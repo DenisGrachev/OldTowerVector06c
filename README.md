@@ -10,6 +10,6 @@ Grab **sjasmplus** from **z00m128** https://github.com/z00m128/sjasmplus, downlo
 
 Code - **Denis Grachev** (rook^retrosouls^sibkrew)
 
-zx0 depacker for 8080 by **ivagor** https://github.com/ivagorRetrocomp/DeZX
+zx0 depacker for 8080 by **by Ivan Gorodetsky** (ivagor) https://github.com/ivagorRetrocomp/DeZX
 
 Tested with **sjasmplus v1.20.1** from **z00m128** https://github.com/z00m128/sjasmplus
