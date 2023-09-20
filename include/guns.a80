@@ -1,0 +1,149 @@
+;gunzzzz
+;2byte - yx, if y=0 then skip
+;1 byte is direction
+
+TILE_SHOT_RIGHT0 = 36*2
+TILE_SHOT_RIGHT1 = 37*2
+TILE_SHOT_LEFT0 = 38*2
+TILE_SHOT_LEFT1 = 39*2
+
+shotPosition: dw 00000
+
+;структура для кольцевого смерти буфера, ух - координаты и время жизни
+deathBufferPointer: dw deathBuffer
+deathBuffer:    
+        dup 8
+        db 0
+        dw 00000         
+        edup
+        db 255;end of list
+
+resetDeathBuffer:
+        ld hl,deathBuffer : ld (deathBufferPointer),hl
+        xor a : ld b,8*3
+1:
+        ld (hl),a
+        dec b : jp nz,1b
+        ret
+;hl - coords
+addToDeathBuffer:
+        ex hl,de
+        ld hl,(deathBufferPointer)
+        ld a,(hl)
+        ;loop on end
+        cp 255 : jp nz,1f
+        ld hl,deathBuffer : ld (deathBufferPointer),hl
+1:
+        ld (hl),5;LIFE TIME OF DEAT FX
+        inc hl
+        ld (hl),e : inc hl : ld (hl),d : inc hl
+        ;save new death pointer
+        ld (deathBufferPointer),hl
+        ret
+
+doDeathBuffer:
+    //check if we win or die then skip  
+    ld a,(heroState)
+    cp HERO_DEAD
+    ret nc
+N=0
+        dup 8
+        ld a,(deathBuffer+N*3) : or a : jp z,5f
+        ;dec life time
+        dec a : ld (deathBuffer+N*3),a
+;====================================================
+        ;kill hero
+        ld hl,(heroPosition)
+        ld a,(deathBuffer+N*3+1) : cp l : jp nz,5f
+        ld a,(deathBuffer+N*3+2) : cp h : jp z,killHero
+;====================================================
+5:        
+N=N+1        
+        edup
+        ret
+
+resetGuns:
+    xor a : ld (gunsCount),a 
+    ld (shotPosition+1),a;reset shot
+    ld hl,gunsList : ld (gunsPointer),hl
+    call resetDeathBuffer
+
+    ;default gun delay
+    ;ld a,63 : ld (gunDelay),a
+    ;last world gun delay
+    ;ld a,(currentLevel) : cp 16 : ret c
+    ;ld a,31 : ld (gunDelay),a
+
+    ret
+
+loopGuns:    
+    ld a,(gunDelay) : ld (gunsCount),a
+    ld hl,gunsList : ld (gunsPointer),hl
+    ret
+
+//simple horizontal shot it x=0 then it's dead %)
+doShot:
+  ld hl,(shotPosition)
+  ld a,h : or a : ret z    
+shotDir: equ $+1
+    add 0
+    ;save new x
+    ld (shotPosition+1),a : ld h,a
+    ld hl,(shotPosition)
+    ld a,TILE_HERO_HIDE+14 : call addFX6   
+    ;ld a,TILE_HERO_HIDE-2 : call addFX   
+    ld hl,(shotPosition) : call addToDeathBuffer
+    ld hl,(shotPosition)
+    call getTileType
+    cp TILE_SOLID : ret nz    
+    xor a : ld (shotPosition+1),a
+restoreHeadCoords: equ $+1
+             ld hl,00000
+restoreHeadTile: equ $+1
+             ld a,0
+     jp putTile         
+
+doGuns:
+    call doDeathBuffer
+    call doShot
+    call processGuns    
+    ret
+
+processGuns:
+;=====================================;
+gunsCount: equ $+1
+    ld a,0 : inc a : ld (gunsCount),a
+;=====================================;
+gunDelay: equ $+1
+    and 63;63
+    or a : ret nz
+gunsPointer: equ $+1
+    ld hl,gunsList
+;if reach end of list jump to start    
+    ld a,(hl) : or a : jp z,loopGuns
+;ok shoot
+1:
+    ;step to next gun first
+    push hl : ld de,3 : add hl,de : ld (gunsPointer),hl : pop hl
+;=====================================;
+    ld e,a : inc hl : ld d,(hl) : inc hl : ld a,(hl)
+    ;in de coords in a-direction
+    ex hl,de :  ld (shotPosition),hl
+    ;and put shot direction    
+    ld (shotDir),a
+
+    ld (restoreHeadCoords),hl
+
+    cp 1 : jp nz,lShoot
+    ld a,TILE_SHOT_RIGHT1 : call putTile
+    ld a,TILE_SHOT_RIGHT0 : ld (restoreHeadTile),a
+    jp eShoot
+lShoot:
+    ld a,TILE_SHOT_LEFT1 : call putTile
+    ld a,TILE_SHOT_LEFT0 : ld (restoreHeadTile),a
+eShoot:
+;ok shoot
+    ld a,8 : ld (priorityCounter),a; play shoot for 8 frames
+    ld hl,sfxGun : jp playSFXForce
+
+    ret

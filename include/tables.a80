@@ -1,0 +1,93 @@
+    align 256
+freqTable: incbin "music\freqTable.bin"   
+
+MAX_SPRITES = 28
+
+	align 256
+addrLUT:
+YY=0
+	dup 64
+	IF YY<=29
+	dw 32768+8*29-YY*8
+	ELSE
+	dw 32768+8*29-YY*8+256
+	ENDIF
+YY=YY+1	
+	edup
+
+	align 256	
+spritesList:
+SPRITE_SIZE = 6
+N=0
+	dup MAX_SPRITES
+;DRAW PART    
+	db 8			;number of lines, if zero then skip draw
+	db 0			;which line to start
+	dw 0;32768+8  ;where to draw
+	dw 0;tiles+50*32 	;what to draw	
+N=N+1	
+	edup    
+
+    ;lookup table with tiles addrs
+	align 256	
+tilesLUT:
+N=0
+	dup 128
+	dw tiles + N*4*8	
+N=N+1	
+	edup
+
+	align 256
+collisions:
+	incbin "res\tiles.collisions"
+	align 256
+tiles:	
+	incbin "res\tiles_BASE.png.tiles"
+
+/*
+    align 256
+speedLUT:    
+    db 1
+    db 1
+    db 1
+    db 1
+    db 2
+    db 2
+    db 2
+    db 2
+    db 3
+    db 3
+    db 3
+    db 3
+    db 3
+    db 3
+    dup 64-14
+    db 3
+    edup
+*/
+    align 256
+mapLUT:
+N=0
+    dup 50
+    dw map+N*14
+N=N+1    
+    edup	
+
+speedLUT:    
+    db 1
+    db 1
+    db 1
+    db 1
+    db 2
+    db 2
+    db 2
+    db 2
+    db 3
+    db 3
+    db 3
+    db 3
+    db 3
+    db 3
+    dup 64-14
+    db 3
+    edup

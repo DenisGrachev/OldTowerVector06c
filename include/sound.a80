@@ -1,0 +1,88 @@
+
+;Простейший игратель эффектов на одном канале таймера
+;Формат - 1 500 000 гц / делитель = частота
+;Эффект делаются в shiru ayfx editor, потом экспорт в csv и конвертером уже в бинарник с преобразованием частоты АУ-ВИ53
+;Если FFFD - то ВКЛЮЧИТЬ КАНАЛ
+;Если FFFE - то ВЫКЛЮЧИТЬ КАНАЛ
+;Если FFFF - то КОНЕЦ ЭФФЕКТА
+
+
+sfxFly:
+    incbin "sfx\fly.csv.sfx"
+;sfxLand:
+;    incbin "sfx\land.csv.sfx"
+sfxReflect:
+    incbin "sfx\reflect.csv.sfx"
+sfxWin:
+    incbin "sfx\win.csv.sfx"
+sfxDead:
+    incbin "sfx\dead.csv.sfx"
+sfxExit:
+    incbin "sfx\exit.csv.sfx"
+sfxCoin:
+    incbin "sfx\coin.csv.sfx"   
+sfxShow:
+    incbin "sfx\show.csv.sfx" 
+sfxGun:
+    incbin "sfx\gun2.csv.sfx"     
+    ;dw #FFFD
+    ;dw 2400,1193,686,1550,1550,1193    
+    ;dw #FFFE
+    ;dw #FFFF
+
+;номер эффект который сейчас играет
+soundToPlay: db 255
+;указатель в текущем эффекте
+soundPointer: dw sfxFly
+
+doSounds:
+    ld a,(priorityCounter) : or a : jp z,1f    
+    dec a : ld (priorityCounter),a
+1:
+    
+    ld a,(soundToPlay) : cp 255 : ret z    
+    ld hl,(soundPointer)    
+    ;check high byte, id #ff then low byte is command
+    inc hl : ld a,(hl) : dec hl
+    cp #ff : jp nz,sReadNote
+    ld a,(hl);get command byte
+    cp #ff : ret z ;#ffff - end of fx reached
+    cp #fd : jp z,sEnableTimer ;#fffd - enable chanel and play note
+    cp #fe : jp nz,sReadNote ;#fffe - disable chanel - pause
+sDisableTimer:
+    ld  A,0B6h        ;выключить 2-й канал
+    OUT  (08),a       ;
+    jp sNextNote       ;перейти к следующей ноте
+sEnableTimer:        
+    ld  A,0B6h        ;включить 2-й канал
+    OUT  (08),a       ;
+    ;и сразу поиграть следующую ноту
+    inc hl : inc hl
+sReadNote:
+    ld  A,(hl)         ;
+    OUT  (09h),a       ;
+    inc hl
+    ld A,(hl)          ;
+    OUT  (09h),a       ;    
+sNextNote:
+    ld hl,(soundPointer) : inc hl : inc hl : ld (soundPointer),hl
+    ret
+
+playSFX:
+priorityCounter: equ $+1
+    ld a,0 : or a : ret nz;don't play sound if already played sound with priority count    
+playSFXForce:
+    ;init sound pointer
+    ld (soundPointer),hl
+    ;enable sound process
+    xor a : ld (soundToPlay),a      
+    ret
+;collect sound wtih high pitch
+playCollectSound:    
+collectTone:    ld hl,2048
+    ld de,-16 : add hl,de : ld (collectTone+1),hl
+    ld (sfxCoin+2),hl
+    ld hl,sfxCoin : jp playSFX
+resetCollectSound
+    ld hl,2048 : ld (collectTone+1),hl
+    ret

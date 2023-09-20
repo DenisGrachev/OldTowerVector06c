@@ -1,0 +1,55 @@
+showIntro:
+    call fadeOUTOUT
+	ld a,255 : ld (Scroll),a : ld (currentMusic),a
+	call clearScreen
+    ;draw intro text
+    ld hl,introText : call drawText
+
+    ;
+    call initFadeIN
+    ;ld a,0
+doIntro:
+        halt
+     ;wait space		
+	    ld a,(KeyKod7)
+	    cp SPACE	    
+        jp nz,doIntro
+        ld hl,sfxShow : call playSFX	
+        call fadeOUTOUT
+	    call clearScreen
+        ret
+
+introText:
+    dw 32768+8192*0
+    db 28*8,3,"STARAQ=BA[NQ",254
+    dw 32768+8192*0
+    db 27*8,3,";;;;;;;;;;;;",254
+
+    dw 32768+8192*2
+    db 25*8,3,"IGRA=DENISA=GRA^EWA",254
+    dw 32768+8192*2
+    db 24*8,3,"MUZYKA=OLEGA=NIKITINA",254
+    dw 32768+8192*2
+    db 22*8,3,"TESTIROWAL=ARTEMKA=WASILXEW",254
+    dw 32768+8192*0
+    db 19*8,3,"KLAWI[I=UPRAWLENIQ=GEROEM:",254
+    dw 32768+8192*0
+    db 18*8,3,";;;;;;;;;;;;;;;;;;;;;;;;;;",254
+    dw 32768+8192*3
+    db 16*8,3,"DWIVENIE=;=KURSOR",254
+    dw 32768+8192*3
+    db 15*8,3,"PEREKL@^ENIE=;=PROBEL",254
+    dw 32768+8192*3
+    db 14*8,3,"RESTART=UROWNQ=;=TAB",254
+    dw 32768+8192*2
+    db 11*8,3,"PRIQTNOJ=IGRY>",254
+
+    dw 32768+8192*0
+    db 6*8,1,"NAVMI=PROBEL=^TOBY=NA^ATX=IGRU",254
+    ;db 7*8,2,"DLQ=NA^ATX=IGRY=NAVMI=PROBEL",254
+;    db 6*8,1,"^TOBY=NA^ATX=IGRU=VMI=NA=PROBEL",254
+
+    dw 32768+8192*1
+    db 3*8,3,"<2023=KOOPERATIW=RETROSOULS",254
+    dw 32768+8192*1
+    db 2*8,4, "630083=NOWOSIBIRSK=A?Q=17",255   

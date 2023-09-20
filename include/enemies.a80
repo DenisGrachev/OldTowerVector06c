@@ -1,0 +1,100 @@
+//enimies
+//max 6
+
+//2bytes yx
+//1 byte dir
+//1 byte count
+//1byte move count
+//1byte REAL X
+
+DIR_IDLE = 0
+DIR_LEFT = 1
+DIR_RIGHT = 2
+DIR_UP = 4
+DIR_DOWN = 3
+
+ENEMY_SIZE=6
+
+doEnemies:
+N=0
+    dup 6
+    ;process move count
+    ld a,(enemiesList+N*ENEMY_SIZE+4) : inc a : and 1 : ld (enemiesList+N*ENEMY_SIZE+4),a
+    or a : jp nz,1f
+    ;ok need to move
+    ;get yx
+    ld hl,(enemiesList+N*ENEMY_SIZE);yx      
+    ld a,l : or a : jp z,1f;skip if y=0
+
+    ;get direction
+    ld a,(enemiesList+N*ENEMY_SIZE+2);
+    CP DIR_LEFT
+    jp z,7f
+;==== OK MOVE RIGHT       
+    ;inc real coords
+    ld a,(enemiesList+N*ENEMY_SIZE+5) : inc a : ld (enemiesList+N*ENEMY_SIZE+5),a    
+    ;get count 0-7 
+    ld a,(enemiesList+N*ENEMY_SIZE+3)
+    inc a  : inc a : inc a : inc a : and 31 : ld (enemiesList+N*ENEMY_SIZE+3),a
+    or a : jp nz,2f
+    ld hl,(enemiesList+N*ENEMY_SIZE);yx     
+    ;restore tile under
+    push hl : call restoreTile : pop hl
+    ;and step forward
+    inc h : ld (enemiesList+N*ENEMY_SIZE),hl
+;ok need move forward  
+    ;check if no solid tile in front    
+    inc h : call getTileType
+    cp TILE_PASS : jp z,2f
+    ;switch dir
+    ld a,DIR_LEFT : ld (enemiesList+N*ENEMY_SIZE+2),a 
+    jp 1f
+2:
+    ld hl,(enemiesList+N*ENEMY_SIZE);yx 
+    ld a,(enemiesList+N*ENEMY_SIZE+3)
+    add 80*2;add base frame    
+    ;save coords
+    push hl
+    push af;save frame
+    call putTile
+    pop af : add 2
+    pop hl : inc h : call putTile
+    jp 1f
+;===== MOVE LEFT
+7:    
+    ;dec real coords
+    ld a,(enemiesList+N*ENEMY_SIZE+5) : dec a : ld (enemiesList+N*ENEMY_SIZE+5),a    
+    ;ld hl,(enemiesList+N*ENEMY_SIZE);yx 
+    ;get count 0-7 
+    ld a,(enemiesList+N*ENEMY_SIZE+3)
+    inc a  : inc a : inc a : inc a : and 31 : ld (enemiesList+N*ENEMY_SIZE+3),a
+    or a : jp nz,2f
+    ;ok need move forward
+    ;check if no solid tile in front
+    ;restore tile under
+    push hl : call restoreTile : pop hl
+    ;and step forward
+    dec h : ld (enemiesList+N*ENEMY_SIZE),hl    
+    ;check if no solid tile in front    
+    dec h : call getTileType
+    cp TILE_PASS : jp z,2f
+    ;switch dir
+    ld a,DIR_RIGHT : ld (enemiesList+N*ENEMY_SIZE+2),a 
+    jp 1f
+2:
+    ld hl,(enemiesList+N*ENEMY_SIZE);yx 
+    ld a,(enemiesList+N*ENEMY_SIZE+3)
+    add 64*2;add base frame    
+    ;save coords
+    push hl
+    dec h
+    push af;save frame
+    call putTile
+    pop af : add 2
+    pop hl : call putTile
+    jp 1f
+1:
+N=N+1
+    edup
+
+    ret

@@ -1,0 +1,267 @@
+
+
+currentPosition: db 0
+targetPosition: db 0
+mapPointer: dw map+0*14;pointer to map tiles, need to draw new pixels from tilemap
+
+
+//16 bit globalPointer
+globalPointer: dw 0
+//8bit global pointer divided by 8
+globalPointer8: db 0
+
+resetCamera:
+    xor a : ld (currentPosition),a : ld (targetPosition),a : ld (globalPointer),a : ld (globalPointer+1),a : ld (globalPointer8),a
+    ld a,#ff : ld (Scroll),a
+    ld hl,map+0*14 : ld (mapPointer),hl
+    ret
+
+cameraSpeed: db 0
+
+doCamera:    
+    xor a : ld (cameraSpeed),a    
+
+    ld hl,(heroPosition); l-y
+    ld a,(globalPointer8) : add 14    
+
+    cp l
+    ret z ;same - ret
+
+    jp nc,1f
+    ;so global pointer less then hero
+    ld h,a : ld a,l : sub h
+    ;ld h,high speedLUT : ld l,a
+    ld h,high speedLUT : add 100 : ld l,a
+    ld c,(hl)
+
+    ;save speed to check
+    ld a,c : ld (cameraSpeed),a
+    cp 3 : jp c,5f
+    ld a,(visibleSprites) : cp SPRITES_LIMIT_TO_COINS : jp c,5f
+    ld c,1
+5:
+   
+4:
+    push bc
+    call moveCameraDown
+    pop bc
+    dec c : jp nz,4b
+
+    ret
+1:
+ ;so global pointer more then hero
+    sub l
+    ;ld h,high speedLUT : ld l,a
+    ld h,high speedLUT : add 100 : ld l,a
+    ld c,(hl)
+ 
+    ;save speed to check
+    ld a,c : ld (cameraSpeed),a
+    cp 3 : jp c,5f
+    ld a,(visibleSprites) : cp SPRITES_LIMIT_TO_COINS : jp c,5f
+    ld c,1
+5:
+   
+4:
+    push bc
+    call moveCameraUp
+    pop bc
+    dec c : jp nz,4b
+    ret
+
+processCounter8:
+;===========================================================================
+    //MOVE CALC BEFORE SCROLL AND REMOVE IN PUT PIXEL LINE AND HERE
+    //div 8 global pointer
+    ld hl,(globalPointer)	  
+	;div hl by 2, since max is 511 for high is 1 shift enought
+ 	or a : ld a,h : rra : ld h,a
+	ld a,l : rra  : or a : ;ld l,a
+	rra : or a : rra : or a ;: ld l,a
+    ld (globalPointer8),a
+;===========================================================================
+    ret
+
+;IN: HL-ADDR OF PIXEL LINE TO CLEAR
+clearPixelLine:    
+    ld a,(Scroll) : inc a :  add l : ld l,a
+    ld de,8192-256*13
+    xor a;null a
+    dup 4
+    dup 14
+    ld (hl),a : inc h
+    edup
+    org $-1
+    add hl,de
+    edup
+    org $-1    
+    ret
+
+
+DELTA=9
+DELTA_LEVEL=9
+
+putBottomPixelLineFast:    	
+	;get tile line
+	ld a,(Scroll)  :  and 7 : add a,a : add a,a : ld c,a
+	;get global pointer
+	ld hl,(globalPointer)
+
+
+	;div hl by 2, since max is 511 for high is 1 shift enought
+ 	or a : ld a,h : rra : ld h,a
+	 ;continue div to 8
+	ld a,l : rra  : or a : ;ld l,a
+	rra : or a : rra : or a : ld l,a
+
+	;x14
+	add hl,hl : push hl : add hl,hl : push hl : add hl,hl : pop de : add hl,de : pop de : add hl,de
+
+	;calc map pointer
+	ld de,map+27*14 : add hl,de
+
+K=0
+    dup 14    
+
+    IF K<13
+    push hl
+    ENDIF
+
+    ld l,(hl) ; get tile
+    ;get tile addr fromLUT
+	ld h,high tilesLUT : ld a,(hl) : inc l : ld h,(hl)
+    ;now de contains a tile data pointer
+    ;add scroll delta to get corresponding line for tile    
+    ;add c : ld l,a
+	add 7*4 : sub c : ld l,a
+    ;where to put            
+    ld a,(Scroll) : inc a : or a : add 2*8-1 : ld b,a;scroll delta        
+N=0
+    dup 4    
+    ld d,high (32768+(DELTA+K)*256+8192*N)
+    ld e,b 
+    ;put
+    ld a,(hl) : ld (de),a
+    IF N<3
+    ;ld a,l : add 8 : ld l,a
+	inc l
+    ENDIF
+N=N+1
+    ;inc l ;if change tiles format
+    edup
+
+    IF K<13
+    ;and to next tile
+    pop hl
+    ENDIF
+    inc hl
+K=K+1
+    edup
+    org $-1
+
+
+    ret
+
+putTopPixelLineFast:    
+	;get tile line
+	ld a,(Scroll) : inc a : or a :  and 7 : add a,a : add a,a : ld c,a
+	
+;	ld hl,(globalPointer) : add hl,hl : ex de,hl
+;	ld hl,scrollTable : add hl,de		
+;	ld a,(hl) : inc hl : ld h,(hl) : ld l,a; hl now points to tile in map
+
+	ld hl,(globalPointer)
+	dec hl
+	;div hl by 2, since max is 511 for high is 1 shift enought
+ 	or a : ld a,h : rra : ld h,a
+	ld a,l : rra  : or a : ;ld l,a
+	rra : or a : rra : or a : ld l,a
+
+
+	;or a : ld a,h : rra : ld h,a
+	;ld a,l : rra  : or a : ld l,a
+
+	;or a : ld a,h : rra : ld h,a
+	;ld a,l : rra  : or a : ld l,a
+
+	;x14
+	add hl,hl : push hl : add hl,hl : push hl : add hl,hl : pop de : add hl,de : pop de : add hl,de
+
+	ld de,map+0*14 : add hl,de
+
+K=0
+    dup 14    
+
+    IF K<13
+    push hl
+    ENDIF
+
+    ld l,(hl) ; get tile
+    ;get tile addr fromLUT
+	ld h,high tilesLUT : ld a,(hl) : inc l : ld h,(hl)
+    ;now de contains a tile data pointer
+    ;add scroll delta to get corresponding line for tile    
+    add 7*4 : sub c : ld l,a
+	;add c : ld l,a
+    ;where to put            
+
+    ld a,(Scroll) :  inc a : or a : add 29*8 : ld b,a;scroll delta        
+N=0
+    dup 4    
+    ld d,high (32768+(DELTA+K)*256+8192*N)
+    ld e,b 
+    ;put
+    ld a,(hl) : ld (de),a
+    IF N<3
+	inc l
+    ;ld a,l : add 8 : ld l,a
+    ENDIF
+N=N+1
+    ;inc l ;if change tiles format
+    edup
+
+    IF K<13
+    ;and to next tile
+    pop hl
+    ENDIF
+    inc hl
+K=K+1
+    edup
+    org $-1
+    ret
+
+moveCameraDown:	
+BOTTOM=(50-27)*8
+	ld hl,(globalPointer)
+	ld a,high BOTTOM
+	cp h : jp nz,6f
+	ld a,low BOTTOM
+	cp l : jp nz,6f
+    xor a : ld (cameraSpeed),a
+    ret
+	//no continue
+6:			
+	call putBottomPixelLineFast
+;	ld a,(globalPointer) : inc a : ld (globalPointer),a
+	ld hl,(globalPointer) : inc hl : ld (globalPointer),hl		
+	ld a,(Scroll) : dec a :  ld (Scroll),a	
+
+	ld hl,32768+29*8+DELTA*256 : jp clearPixelLine   ;here we need to draw 7 line of next tile on top	
+;	ret
+
+
+moveCameraUp:	
+	//is it top edge??
+	ld hl,(globalPointer) 
+	xor a : cp h : jp nz,6f
+	xor a
+	cp l : jp nz,6f
+    xor a : ld (cameraSpeed),a
+    ret
+6:		
+	//no continue
+	call putTopPixelLineFast		
+	ld hl,(globalPointer) : dec hl : ld (globalPointer),hl		
+	ld a,(Scroll) : inc a :  ld (Scroll),a	
+	ld hl,32768+2*8+DELTA*256-1: jp clearPixelLine   ;here we need to draw 7 line of next tile on top
+    ;ret

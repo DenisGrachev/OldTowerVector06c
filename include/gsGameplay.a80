@@ -1,0 +1,47 @@
+
+
+doGameplay:
+    ;ld a,14 : out (2),a    	
+    call doBaseActions
+	;restart
+	ld a,(KeyKod0)
+	cp TAB
+	call z,killHero
+;	call z,winHero
+
+    ;xor a : out (2),a
+    jp mainLoop
+
+doBaseActions:    	
+    ;base functions
+	;call doSounds	
+	call drawSprites
+	call doCamera
+	call resetSprites
+	call processCounter8	
+	call doEnemies
+;	call doCoins
+	call doDoors
+	;to draw on top of everything?
+	call doHero	
+	call processCoins
+	call doFXS		      
+	call doGuns  
+;	ld a,12 : out (2),a
+	call doStars	
+;	xor a : out (2),a
+    ret
+
+waitFireButton:    
+	call doPushFire
+    call doBaseActions
+	;wait space		
+	ld a,(KeyKod7)
+	cp SPACE
+	jp nz,mainLoop
+1:	
+	;call fadeOut
+	ld a,(nextGameState) : ld (gameState),a	    
+	ld hl,sfxShow : call playSFX	
+	call initFadeOUT
+    jp mainLoop

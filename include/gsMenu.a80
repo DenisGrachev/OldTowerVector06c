@@ -1,0 +1,80 @@
+
+
+gameLogo:   incbin "res\logo.png.logo.img"
+
+initMainMenu:
+    call fadeOUTOUT
+    ;call initFadeOUT
+    
+    ;edit push fire position
+    ld a,40
+    ld (pfDelta),a
+    ;unpack logo   
+    ld de,gameLogo : ld bc,32768 : call dzx0 
+    ;darw some menu text
+    ;ld hl,menuText : call drawText
+
+    ;draw zero level
+    ;xor a : ld (currentLevel),a : ld (pfCount),a
+    ;call drawLevel
+
+    ;init fade in and switch to menu loop
+    call initFadeIN
+    ld a,GS_MAIN_MENU : ld (gameState),a
+    jp mainLoop
+
+
+scrollSin:
+    db 0,1,2,3,4,5,6,6,6,5,4,3,2,1,0,0
+
+doMainMenu
+
+ss: ld a,0 : inc a : and 127 : ld (ss+1),a
+    or a : rra : or a : rra : or a : rra
+    ld hl,scrollSin : ld e,a : ld d,0 : add hl,de : ld a,(hl) : ld (Scroll),a
+
+    call doStars
+    call doPushFire
+    ;call doCoins
+    ;wait space
+    ld a,(KeyKod7)
+	cp SPACE
+	jp nz,mainLoop
+1:		
+;===========START GAME===================================================
+	;ld a,(nextGameState) : ld (gameState),a	    
+    ld a,GS_RESTART_LEVEL : ld (gameState),a
+    ld hl,sfxShow : call playSFX
+	call initFadeOUT    
+    ld a,8 : ld (pfDelta),a        
+    call startGame
+    ;reset stat
+    ld a,'0' :
+     ld hl,deathString
+     ld de,goldString
+     ld b,5
+1:
+    ld (hl),a : ld (de),a
+    inc hl : inc de
+    dec b : jp nz,1b
+
+    call vktStop
+
+    jp mainLoop    
+
+doPushFire:
+    ;wait till scroll stops
+    ld a,(cameraSpeed) : or a : ret nz
+
+    ld a,(Scroll) : inc a : or a
+pfDelta: equ $+1
+    add 64
+    ld (pushFireText+2),a : ld (pushFireNull+2),a
+
+pfCount: equ $+1
+    ld a,0 : inc a : and 15 : ld (pfCount),a   
+    or a : jp nz,1f
+    ld hl,pushFireText : jp drawText
+1:
+    cp 7 : ret nz
+    ld hl,pushFireNull : jp drawText    

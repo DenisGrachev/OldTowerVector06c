@@ -1,0 +1,121 @@
+
+//coins struct
+//y in tile coords
+//x in tile coords
+//base frame
+//anim count 0,2,4,6
+
+COIN_SIZE=4
+
+processCoins:
+    ;ld a,(cameraSpeed)
+    ;cp 3
+    ;ret nc
+    ;if too much sprites drawed then skip animation of coins
+    ld a,(visibleSprites)
+    cp SPRITES_LIMIT_TO_COINS
+    ret nc
+
+doCoins
+    jp doCoins0
+
+doCoins0:
+    ;switch to next 6
+    ld hl,doCoins1
+    ld (doCoins+1),hl
+N=0
+    dup 6
+    //check if coin are collected then skip it
+    ld hl,(coinsList+N*COIN_SIZE) : call getTile
+    cp TILE_COIN : jp nz,1f
+    ;do animations
+    ld a,(coinsList+N*COIN_SIZE+2)
+    or a : jp z,1f;skip if base frame = 0
+    ld l,a
+    ;process count
+    ld a,(coinsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (coinsList+N*COIN_SIZE+3),a
+    add l
+    ;get coords
+    ld hl,(coinsList+N*COIN_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+    ret
+
+doCoins1:
+    ;switch to next 6
+    ld hl,doCoins2
+    ld (doCoins+1),hl
+N=6
+    dup 6
+    //check if coin are collected then skip it
+    ld hl,(coinsList+N*COIN_SIZE) : call getTile
+    cp TILE_COIN : jp nz,1f
+    ;do animations
+    ld a,(coinsList+N*COIN_SIZE+2)
+    or a : jp z,1f;skip if base frame =0
+    ld l,a
+    ;process count
+    ld a,(coinsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (coinsList+N*COIN_SIZE+3),a
+    add l
+    ;get coords
+    ld hl,(coinsList+N*COIN_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+    ret
+
+doCoins2:
+    ;switch to next 6
+    ld hl,doCoins3
+    ld (doCoins+1),hl
+N=12
+    dup 6
+    //check if coin are collected then skip it
+    ld hl,(coinsList+N*COIN_SIZE) : call getTile
+    cp TILE_COIN : jp nz,1f
+    ;do animations
+    ld a,(coinsList+N*COIN_SIZE+2)
+    or a : jp z,1f;skip if base frame =0
+    ld l,a
+    ;process count
+    ld a,(coinsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (coinsList+N*COIN_SIZE+3),a
+    add l
+    ;get coords
+    ld hl,(coinsList+N*COIN_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+    ret
+
+
+doCoins3:
+    ;switch to next 6
+    ld hl,doCoins0
+    ld (doCoins+1),hl
+N=18
+    dup 6
+    //check if coin are collected then skip it
+    ld hl,(coinsList+N*COIN_SIZE) : call getTile
+    cp TILE_COIN : jp nz,1f
+    ;do animations
+    ld a,(coinsList+N*COIN_SIZE+2)
+    or a : jp z,1f;skip if base frame =0
+    ld l,a
+    ;process count
+    ld a,(coinsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (coinsList+N*COIN_SIZE+3),a
+    add l
+    ;get coords
+    ld hl,(coinsList+N*COIN_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+    ret    

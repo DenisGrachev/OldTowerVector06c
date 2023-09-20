@@ -1,0 +1,162 @@
+
+//coins struct
+//y in tile coords
+//x in tile coords
+//base frame
+//anim count 0,2,4,6
+
+COIN_SIZE=4
+
+processCoins:
+    ;ld a,(cameraSpeed)
+    ;cp 3
+    ;ret nc
+    ;if too much sprites drawed then skip animation of coins
+    ld a,(visibleSprites)
+    cp SPRITES_LIMIT_TO_COINS
+    ret nc
+
+doCoins
+    jp doCoins0
+
+doCoins1:
+    ld hl,doCoins2
+    ld (doCoins+1),hl
+    ld hl,coinsList+COIN_SIZE*6*1 : jp doCoinsBase
+
+doCoins2:
+    ld hl,doCoins3
+    ld (doCoins+1),hl
+    ld hl,coinsList+COIN_SIZE*6*2 : jp doCoinsBase
+
+doCoins3:
+    ld hl,doCoins0
+    ld (doCoins+1),hl
+    ld hl,coinsList+COIN_SIZE*6*3 : jp doCoinsBase    
+    
+
+doCoins0:
+    ;switch to next 6
+    ld hl,doCoins1
+    ld (doCoins+1),hl
+    ld hl,coinsList
+doCoinsBase:        
+    ld b,6    
+coinzCNT:    
+    ld e,(hl) : inc hl : ld d,(hl) : inc hl : ld (coinsCNT2),hl : ex hl,de : ld (coinsCOORDS),hl : call getTile
+    cp TILE_COIN : jp nz,1f
+coinsCNT2: equ $+1
+    ld hl,00000 : ld a,(hl)
+    or a : jp z,1f;skip if base frame = 0
+    ld e,a
+    inc hl : ld a,(hl)
+    inc a : inc a : and 7 : ld (hl),a
+    add e    
+    ;get coords    
+coinsCOORDS: equ $+1
+    ld hl,00000
+    call putTile        
+1:
+    ld hl,(coinsCNT2) : inc hl : inc hl
+    dec b
+    jp nz,coinzCNT
+
+    ret
+/*
+N=0
+    dup 6
+    //check if coin are collected then skip it
+    ld hl,(coinsList+N*COIN_SIZE) : call getTile
+    cp TILE_COIN : jp nz,1f
+    ;do animations
+    ld a,(coinsList+N*COIN_SIZE+2)
+    or a : jp z,1f;skip if base frame = 0
+    ld l,a
+    ;process count
+    ld a,(coinsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (coinsList+N*COIN_SIZE+3),a
+    add l
+    ;get coords
+    ld hl,(coinsList+N*COIN_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+    ret
+
+doCoins1:
+    ;switch to next 6
+    ld hl,doCoins2
+    ld (doCoins+1),hl
+N=6
+    dup 6
+    //check if coin are collected then skip it
+    ld hl,(coinsList+N*COIN_SIZE) : call getTile
+    cp TILE_COIN : jp nz,1f
+    ;do animations
+    ld a,(coinsList+N*COIN_SIZE+2)
+    or a : jp z,1f;skip if base frame =0
+    ld l,a
+    ;process count
+    ld a,(coinsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (coinsList+N*COIN_SIZE+3),a
+    add l
+    ;get coords
+    ld hl,(coinsList+N*COIN_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+    ret
+
+doCoins2:
+    ;switch to next 6
+    ld hl,doCoins3
+    ld (doCoins+1),hl
+N=12
+    dup 6
+    //check if coin are collected then skip it
+    ld hl,(coinsList+N*COIN_SIZE) : call getTile
+    cp TILE_COIN : jp nz,1f
+    ;do animations
+    ld a,(coinsList+N*COIN_SIZE+2)
+    or a : jp z,1f;skip if base frame =0
+    ld l,a
+    ;process count
+    ld a,(coinsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (coinsList+N*COIN_SIZE+3),a
+    add l
+    ;get coords
+    ld hl,(coinsList+N*COIN_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+    ret
+
+
+doCoins3:
+    ;switch to next 6
+    ld hl,doCoins0
+    ld (doCoins+1),hl
+N=18
+    dup 6
+    //check if coin are collected then skip it
+    ld hl,(coinsList+N*COIN_SIZE) : call getTile
+    cp TILE_COIN : jp nz,1f
+    ;do animations
+    ld a,(coinsList+N*COIN_SIZE+2)
+    or a : jp z,1f;skip if base frame =0
+    ld l,a
+    ;process count
+    ld a,(coinsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (coinsList+N*COIN_SIZE+3),a
+    add l
+    ;get coords
+    ld hl,(coinsList+N*COIN_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+    ret    
+*/

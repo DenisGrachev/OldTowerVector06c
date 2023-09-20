@@ -1,0 +1,68 @@
+initOutro:
+    call fadeOUTOUT
+    call clearScreen
+    ld hl,outroText : call drawText
+    ld a,GS_OUTRO : ld (gameState),a
+    xor a : ld (Scroll),a
+    xor a : call playMusic
+    call initFadeIN
+    jp mainLoop
+
+doOutro:
+    call doStars
+    ld a,(KeyKod0)
+	cp TAB
+	jp nz,mainLoop
+;swithc to menu back
+    ld hl,sfxShow : call playSFX
+    call fadeOUTOUT
+    ld a,GS_INIT_MAIN_MENU : ld (gameState),a
+    xor a : ld (cameraSpeed),a : ld (ss+1),a : ld (pfCount),a
+
+    jp mainLoop
+
+addDeath:
+    ld hl,deathString+4
+    ld b,1
+    jp uscor
+
+addGold:
+    ld hl,goldString+4
+    ld b,1
+    jp uscor    
+
+uscor:
+    ld a,(hl) ; current value of digit.
+    add a,b ; add points to this digit.
+    ld (hl),a ; place new digit back in string.
+    cp 58 ; more than ASCII value '9'?
+    ret c ; no - relax.
+    sub 10 ; subtract 10.
+    ld (hl),a ; put new character back in string.
+uscor0:
+    dec hl ; previous character in string.
+    inc (hl) ; up this by one.
+    ld a,(hl) ; what's the new value?
+    cp 58 ; gone past ASCII nine?
+    ret c ; no, scoring done.
+    sub 10 ; down by ten.
+    ld (hl),a ; put it back
+    jp uscor0 ; go round again.        
+
+outroText:
+    dw 32768+8192*0
+    db 8*24,10,"POZDRAWLQEM>",254    
+    dw 32768+8192*2
+    db 8*22,0, "TEBE=UDALOSX=WYBRATXSQ=IZ=BA[NI>",254
+    dw 32768+8192*1
+    db 8*18,10, "SMERTEJ:="
+deathString:    
+    db "00000",254
+    dw 32768+8192*2
+    db 8*16,6, "DRAGOCENNOSTEJ:="
+goldString:    
+    db "00000",254
+    dw 32768+8192*3
+    db 8*8,9,"SPASIBO=ZA=IGRU>",254
+    dw 32768+8192*1
+    db 8*1,6,"TAB=;=OBRATNO=W=MEN@",255

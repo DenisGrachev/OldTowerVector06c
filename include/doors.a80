@@ -1,0 +1,48 @@
+
+TILE_DOOR = 28*2
+
+//doors struct
+//y in tile coords
+//x in tile coords
+//base frame
+//anim count 0,2,4,6
+
+DOOR_SIZE=4
+
+doDoors:
+    //if we collect everythin then only open doors
+    ld a,(totalDots) : or a : ret nz
+N=0    
+    //animate all doors    
+    dup 4
+    //check if door is exists - since up to 4 doors
+    ld a,(doorsList+N*DOOR_SIZE); : call getTile
+    or a : jp z,1f
+    //check if exit is activated
+    ld hl,(doorsList+N*DOOR_SIZE) : call getTile
+    //get door coord
+     ld hl,(doorsList+N*DOOR_SIZE);yx
+    //check if ghost hero there
+    cp TILE_GHOST_LEG_DOWN : jp z,winGhostHero
+    cp TILE_GHOST_LEG_UP : jp z,winGhostHero
+    cp TILE_GHOST_LEG_LEFT : jp z,winGhostHero
+    cp TILE_GHOST_LEG_RIGHT : jp z,winGhostHero
+    ;or a : jp z,1f
+    cp TILE_DOOR : jp nz,1f
+
+    ;do animations
+    ld a,(doorsList+N*DOOR_SIZE+2)
+    or a : jp z,1f;skip if base frame =0
+    ld l,a
+    ;process count
+    ld a,(doorsList+N*COIN_SIZE+3)
+    inc a : inc a : and 7 : ld (doorsList+N*DOOR_SIZE+3),a
+    add l    
+    ;get coords
+    ld hl,(doorsList+N*DOOR_SIZE);yx
+    call putTile
+1:    
+N=N+1    
+    edup
+
+    ret

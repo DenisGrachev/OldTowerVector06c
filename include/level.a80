@@ -1,0 +1,201 @@
+
+TILE_LIMBO = 20*2
+
+;8bit scroll value in tiles coords
+;currentScroll: db 0
+;taget scroll position
+;targetScroll: db 2
+
+currentLevel:	db START_LEVEL
+
+startGame:
+	ld a,START_LEVEL : ld (currentLevel),a
+	;unpack base new world files
+	ld de,world01Tiles : ld bc,tiles : call dzx0
+	ld de,coins01Tiles  : ld bc,tiles + 48*8*4 : call dzx0
+	ret
+
+startWorld04:
+	;unpack new world files
+	ld de,world04Tiles : ld bc,tiles : call dzx0
+	ld de,coins03Tiles  : ld bc,tiles + 48*8*4 : call dzx0
+	;ld de,coins02Tiles  : ld bc,tiles + 48*8*4 : call dzx0
+	jp restartLevel
+
+startWorld02:
+	;unpack new world files
+	ld de,world02Tiles : ld bc,tiles : call dzx0
+	ld de,coins02Tiles  : ld bc,tiles + 48*8*4 : call dzx0
+	jp restartLevel
+startWorld03:
+	;unpack new world files
+	ld de,world03Tiles : ld bc,tiles : call dzx0
+	;ld de,coins03Tiles  : ld bc,tiles + 48*8*4 : call dzx0
+	jp restartLevel
+
+winGame:	   
+	   ld a,GS_INIT_OUTRO : ld (gameState),a 
+	   jp mainLoop
+
+nextLevel:
+	call tryStopMusic
+	ld a,(currentLevel) : inc a : ld (currentLevel),a
+	;check if we finish a game
+	cp 21
+	jp z,winGame
+	;check if we need swap world
+	cp 06
+	jp z,startWorld03
+	cp 11
+	jp z,startWorld02
+	cp 16
+	jp z,startWorld04
+
+restartLevel:
+	
+;	ld de,world03Tiles : ld bc,tiles : call dzx0
+;	ld de,coins03Tiles  : ld bc,tiles + 48*8*4 : call dzx0
+
+	call fadeOUTOUT
+
+	;call resetPal
+	call clearScreen
+	call resetFXS
+	call resetSprites
+	call resetCamera
+	call resetGuns
+	call resetCollectSound
+	call drawLevel
+
+	call manageMusic
+
+	jp mainLoop
+
+drawLevel:	
+
+	;get packed addr
+	ld a,(currentLevel) : add a,a : ld e,a : ld d,0
+	ld hl,packedMaps-2 : add hl,de
+	ld e,(hl) : inc hl : ld d,(hl)
+	ld bc,coinsList : call dzx0
+
+
+	ld a,#c9;ret
+	ld (tryToSwitch),a
+	;get hero 2 position
+	ld hl,(map+50*14+2) :  ld a,l : or a : jp z,1f
+	;ok there is a hero 2 on stage
+	call getTile : ld (heroTwoTileUnder),a
+	ld (hl),TILE_GHOST_LEG_DOWN
+	xor a : ld (tryToSwitch),a;put nop - enable switch
+1:
+
+    ;ld a,(currentScroll) : add a,a : ld l,a : ld h, high mapLUT
+    ;ld a,(hl) : inc l : ld h,(hl) : ld l,a
+	ld hl,(mapPointer)
+	ld d,27;height
+	ld c,28;start coords
+2:
+	ld b,DELTA_LEVEL;start coord
+	ld e,14;width
+1:
+	push hl : ld a,(hl) ;save map pointer and load tile from map
+	cp TILE_LIMBO : jp z,7f
+	push de : push bc : call drawTile : pop bc : pop de
+7:	
+	pop hl;restore map pointer
+	inc hl;to next tile
+	inc b;next x to draw
+	dec e : jp nz,1b;dec counter
+	dec c
+	dec d : jp nz,2b
+
+	;get hero start position
+	ld hl,(map+50*14)	
+	ld (heroPosition),hl
+	call initHero
+
+	halt
+	;set work pal
+	;ld hl,basePalette : ld (palPointer+1),hl : ld a,1 : ld (palUpdateFlag),a
+	call initFadeIN
+	;enable gameplay
+	ld a,GS_GAMEPLAY : ld (gameState),a
+	ret
+
+	
+world01Tiles:
+	incbin "res\tiles1.png.tiles.zx0"
+coins01Tiles:
+	incbin "res\coins1.png.tiles.zx0"
+world04Tiles:
+	incbin "res\tiles4.png.tiles.zx0"
+world02Tiles:
+	incbin "res\tiles2.png.tiles.zx0"
+coins02Tiles:
+	incbin "res\coins2.png.tiles.zx0"
+world03Tiles:
+	incbin "res\tiles3.png.tiles.zx0"
+coins03Tiles:
+	incbin "res\coins3.png.tiles.zx0"
+
+coinsList:
+	block 96,0	
+enemiesList:
+	block 36,0
+doorsList:
+	block 16,0
+gunsList:
+	block 27,0	;9x3  - if y = 0 then it's last gun
+totalDots:
+	db 0
+map:
+	block 50*14+4,0
+;=============================================================
+packedMaps:
+	dw map01Packed,map02Packed,map03Packed,map04Packed,map05Packed
+	dw map06Packed,map07Packed,map08Packed,map09Packed,map10Packed
+	dw map11Packed,map12Packed,map13Packed,map14Packed,map15Packed
+	dw map16Packed,map17Packed,map18Packed,map19Packed,map20Packed
+map00Packed:
+;	incbin "res\map00.tmx.mapa.zx0"
+map01Packed:
+	incbin "res\map01.tmx.mapa.zx0"
+map02Packed:
+	incbin "res\map02.tmx.mapa.zx0"	
+map03Packed:
+	incbin "res\map03.tmx.mapa.zx0"		
+map04Packed:
+	incbin "res\map04.tmx.mapa.zx0"		
+map05Packed:
+	incbin "res\map05.tmx.mapa.zx0"		
+map06Packed:
+	incbin "res\map06.tmx.mapa.zx0"		
+map07Packed:
+	incbin "res\map07.tmx.mapa.zx0"		
+map08Packed:
+	incbin "res\map08.tmx.mapa.zx0"		
+map09Packed:
+	incbin "res\map09.tmx.mapa.zx0"		
+map10Packed:
+	incbin "res\map10.tmx.mapa.zx0"		
+map11Packed:
+	incbin "res\map11.tmx.mapa.zx0"		
+map12Packed:
+	incbin "res\map12.tmx.mapa.zx0"		
+map13Packed:
+	incbin "res\map13.tmx.mapa.zx0"		
+map14Packed:
+	incbin "res\map14.tmx.mapa.zx0"		
+map15Packed:
+	incbin "res\map15.tmx.mapa.zx0"		
+map16Packed:
+	incbin "res\map16.tmx.mapa.zx0"		
+map17Packed:
+	incbin "res\map17.tmx.mapa.zx0"		
+map18Packed:
+	incbin "res\map18.tmx.mapa.zx0"		
+map19Packed:
+	incbin "res\map19.tmx.mapa.zx0"		
+map20Packed:
+	incbin "res\map20.tmx.mapa.zx0"		

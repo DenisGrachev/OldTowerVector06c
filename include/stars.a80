@@ -1,0 +1,111 @@
+
+STAR_PLANE=3
+;stars
+stars:
+    
+    dw 32768+4*256+12+8192*STAR_PLANE
+    db -4
+
+    dw 32768+0*256+32
+    db -8
+
+    dw 32768+2*256+128+8192*STAR_PLANE
+    db -6
+
+    dw 32768+3*256+192
+    db -2
+
+    dw 32768+6*256+224+8192*STAR_PLANE
+    db -7
+    
+
+ 
+    dw 32768+28*256+12
+    db -7
+
+    dw 32768+24*256+32+8192*STAR_PLANE
+    db -4
+
+    dw 32768+26*256+128
+    db -2
+
+    dw 32768+27*256+192+8192*STAR_PLANE
+    db -3
+
+    dw 32768+30*256+224
+    db -5
+
+
+doStars:
+    ld c,1
+N=0
+    dup 10
+    ld hl,(stars+N*3) : ld (hl),0 ;reset on old pos
+    ld a,l;save old y
+    ld b,h
+    ld hl,stars+N*3+2 : add (hl);add speed
+    ld (stars+N*3),a;save
+    ld l,a : ld h,b
+    ld (hl),c
+N=N+1
+    edup    
+    ret
+
+/*
+doStars:
+    jp doStars01    
+
+doStars01:
+    ld c,1
+N=0
+    dup 5
+    ld hl,(stars+N*3) : ld (hl),0 ;reset on old pos
+    ld a,l;save old y
+    ld b,h
+    ld hl,stars+N*3+2 : add (hl);add speed
+    ld (stars+N*3),a;save
+    ld l,a : ld h,b
+    ld (hl),c
+N=N+2
+    edup
+    ld hl,doStars02 : ld (doStars+1),hl
+    ret
+
+doStars02:
+    ld c,1
+N=1
+    dup 5
+    ld hl,(stars+N*3) : ld (hl),0 ;reset on old pos
+    ld a,l;save old y
+    ld b,h
+    ld hl,stars+N*3+2 : add (hl);add speed
+    ld (stars+N*3),a;save
+    ld l,a : ld h,b
+    ld (hl),c
+N=N+2
+    edup
+    ld hl,doStars01 : ld (doStars+1),hl
+    ret
+*/
+
+/*
+    ld hl,stars
+    ld c,1
+    ld b,10
+reStar:
+    push hl
+    ld e,(hl) : inc hl : ld d,(hl) : inc hl
+    xor a : ld (de),a ;reset on old coord
+    
+    ;get y from e and add speed
+    ld a,e : add (hl)    
+
+    pop hl
+    ld (hl),a;save new coords
+    ld e,(hl) : inc hl : ld d,(hl) : inc hl
+    ld a,c : ld (de),a ;put on old coord
+    inc hl
+    dec b : jp nz,reStar
+*/
+
+  ;  ret

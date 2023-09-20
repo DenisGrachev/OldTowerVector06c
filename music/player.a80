@@ -1,0 +1,438 @@
+CHANNELS = 2
+; (-)СТАРТ С ЛЮБОГО ПАТЕРНА
+
+;===================================================
+;Basic Vortex Player for vi53
+;ФОРМАТ vkt
+;первые 256 байт - адесса патернов, максимум 128 патернов
+;ПОТОМ 127 БАЙТ ОРДЕЛ ЛИСТ, ПОСЛЕДНИЙ БАЙТ ЭТО КУДА ЛУП С ПОДНЯТЫМ 7-М БИТОМ
+;храняться по два байта адресв начала каждого патерна
+;+128 СКОРОСТЬ
+
+;#81 - на какой делать луп
+;vtkLoop = #81
+;#82 - скорость трека
+;vtkSpeed = #82
+;
+;commands
+;if bit 7 is set - enable timer and playNote - note is AND 01111111b
+;    cmdKeepPlayn equ 0
+;00 - keep playin    
+;7F change speed - сразу за ней скорость
+cmdSpeed equ #7f
+;7E - mute chanel (R--)
+cmdMuteCh equ #7e
+;7D - end of pattern, get new from pat order
+cmdPatChange equ #7d
+;7C включить орнамент
+cmdOrnament equ #7c
+;7B применить оффсет на орнамент
+cmdOrnamentOffset equ #7b
+;7A включить инструмент
+cmdSample equ #7a
+;79 применить оффсет на инструмент-сэмпл
+cmdSampleOffset equ #79
+
+;header    
+;=================================================== 
+;patterns = module
+;playOrder = module + 256
+;ornamentsList = playOrder + 128
+;samplesList = ornamentsList + 64
+;notes = samplesList + 128
+;paterns adresses
+;256bytes
+;patterns:
+;    incbin "music\patterns.bin"
+;play order
+;если установлен 7бит то эндом у нас номер патерна для лупа
+;128bytes
+;playOrder:     
+;    incbin "music\order.bin" 
+;64 bytes - ornaments descriptors за ними сразу сами орнаменты   
+;ornamentsList:
+;    incbin "music\ornaments.bin" 
+;===================================================
+;Табличка с описаниекм Орнаментов
+;    dup 16
+;    dw 00000; ornament data addr delta +64 для нулевого а дальше по длине других - всё в препроцессоре
+;    db 0;loop position
+;    db 0;end position(length) - when reach it loop to loop position
+;    edup
+;===================================================
+;128 bytes - samples descriptors за ними сразу сами инструменты, структура описателей как у орнаментов
+;samplesList:
+;    incbin "music\samples.bin" 
+;notes: 
+;    incbin "music\notes.bin"
+;===================================================
+;Player Variables
+vtkVars:
+patterns:       dw 00000
+playOrder:      dw 00000
+ornamentsList:  dw 00000
+samplesList:    dw 00000
+vtkSpeed:       db 3
+
+currentTick:    dw 0
+currentPattern:  db 0
+speedTick:  db 1
+
+;HL - header16byte + module adress
+;16 bytes header
+vktInit:  
+    push hl           
+    ld de,16 : add hl,de : ex hl,de;skip header
+    pop bc    
+
+    ld a,(bc) : ld l,a : inc bc : ld a,(bc) : ld h,a : inc bc
+    add hl,de : ld (patterns),hl
+
+    ld a,(bc) : ld l,a : inc bc : ld a,(bc) : ld h,a : inc bc
+    add hl,de : ld (playOrder),hl
+
+    ld a,(bc) : ld l,a : inc bc : ld a,(bc) : ld h,a : inc bc
+    add hl,de : ld (ornamentsList),hl
+
+    ld a,(bc) : ld l,a : inc bc : ld a,(bc) : ld h,a : inc bc
+    add hl,de : ld (samplesList),hl
+
+    ld a,(bc) : ld l,a : inc bc : ld a,(bc) : ld h,a : inc bc
+    add hl,de : ld (notes),hl
+    ;speed
+    ld a,(bc) : ld (vtkSpeed),a
+
+
+    ;
+    xor a : ld (currentPattern),a
+    ;==================================================================
+    call getPatternAddr : ld (currentTick),hl
+    ;1-сразу играет первая нота
+    ld a,1 : ld (speedTick),a
+    ;включить воспроизведение
+    xor a : ld (vktPlay),a
+    ;почистить NOTES BUFFER
+    ld hl,notesBuffer : ld b,CHANNELS*NB_SIZE
+clNotesBuffer:    
+    ld (hl),a : inc hl : dec b : jp nz,clNotesBuffer
+
+    ret
+
+vktStop:
+    ;запрещаем проигрывание
+    ld a,#c9 : ld (vktPlay),a
+    ;смотрим, если канал включен то выключаем
+CH = #36
+    dup CHANNELS  
+    ;если канал отключен то скипаем
+    ld a,(notesBuffer+N*NB_SIZE) : or a : jp z,1f
+    ;иначе гасим )
+    ld  A,CH     ;выключить канал
+    OUT  (08),a       ;
+CH = CH + #40;next ch
+    edup        
+    ret
+
+;00110110 сташие 2 бита номер счетчика
+
+;036h ;0  00110110B    
+;076h ;1  01110110B
+;0B6h ;2  10110110B
+
+;0-й канал - порт 0Bh, 1-й канал - порт 0Ah, 2-й канал - порт 09h
+
+currentCh:    db #36
+;vtkSpeed = playOrder+127
+
+
+;fakeOrnament: db +1,+19,0,0,0,0,0,0
+;fakeInstrument: dw 2000,3000,2000,-2000,-3000,-2000
+;какую ноту сувать в какой канал
+NB_SIZE=8
+notesBuffer:
+        dup CHANNELS
+        db 0;0-канал выключен 1-канал включен
+        db 0;индекс ноты какую играем
+;===========================================================================================
+        db 0;какой орнамент применяем, если 0 то никакой, нет нулевого орнамента )        
+        db 0;ornament start +3
+        db 0;ornament counter внутренний счетчик по орнаменту,тут или 0 при ините орнамента или тот который командой 5 задали, loop,end позиции берем из орнамента   +4
+;===========================================================================================
+        db 0;какой инструмент применили +5
+        db 0;sample start +6
+        db 0;sample counter внутренний счетчик по сэмплу,тут или 0 при ините орнамента или тот который командой 4 задали, loop,end позиции берем из инструмента   +7
+;===========================================================================================
+        edup
+        
+vktProcess:    
+N=0
+PORT=#0b
+    dup CHANNELS  
+    ;если канал отключен то скипаем
+    ld a,(notesBuffer+N*NB_SIZE) : or a : jp z,1f
+    ;ок, канал включен
+    ;дельта по-умолчанию
+    ld c,0
+    ;смотрим включен ли орнамент    
+    ;если нет то скипаем
+    ld a,(notesBuffer+N*NB_SIZE+2) : or a : jp z,2f      
+    ;описание одного орнамента 4 байта
+    add a,a : add a,a : ld e,a : ld d,0
+    ld hl,(ornamentsList) : add hl,de    
+    ;теперь hl указывает на нужный нам орнамент
+    ;в de начало значений дельт в орнаменте
+    ld e,(hl) : inc hl : ld d,(hl) : inc hl
+    ;в l-loop position в h-length
+    ld a,(hl) : inc hl : ld h,(hl) : ld l,a
+    ;берем счеткик орнамента для канала
+    ld a,(notesBuffer+N*NB_SIZE+4) : ld b,a
+    ;шагаем счётк орнамента и лупим если надо
+    inc a
+    ;если дошли до конца то на луп прыгаем    
+    cp h
+    jp nz,8f;не дошли до конца просто дальше идём    
+7:
+    ;ок, дошли до конца, прыгаем на луп
+    ld a,l
+8:    
+    ;сохраняем новое значение счетчика
+    ld (notesBuffer+N*NB_SIZE+4),a
+    ;но играем текущее
+    ld a,b
+    ;берём дельту из орнамента
+    ld l,a : ld h,0 : add hl,de : ex hl,de
+    ld hl,(ornamentsList) : add hl,de           
+    ld c,(hl)  
+2:             
+    ;берём ноту
+    ld a,(notesBuffer+N*NB_SIZE+1)
+    or a
+    add c;добавляем дельту из орнамента
+;===============================================================    
+;если нота ниже C-1(4) то делаем её C-1(4)
+    add 4    
+    jp m,6f
+    sub 4 : jp 5f
+6:
+    ld a,4
+5:    
+;===============================================================
+    ;читаем частоту из таблицы нот
+    ld h,high freqTable : add a,a : ld l,a           
+    ld  a,(hl) : inc l : ld h,(hl) : ld l,a
+    ;сохраняем в стек
+    push hl
+    ld bc,00000;default delta
+    ;смотрим включен ли инструмент, если что берем из него дельту
+    ld a,(notesBuffer+N*NB_SIZE+5) : or a : jp z,2f         
+    ;описание одного инструмента 4 байта
+    add a,a : add a,a : ld e,a : ld d,0
+    ld hl,(samplesList) : add hl,de    
+    ;теперь hl указывает на нужный нам инструмент
+    ;в de начало значений дельт в инструменте
+    ld e,(hl) : inc hl : ld d,(hl) : inc hl
+    ;в l-loop position в h-length
+    ld a,(hl) : inc hl : ld h,(hl) : ld l,a
+    ;берем счеткик инструмента для канала
+    ld a,(notesBuffer+N*NB_SIZE+7) : ld b,a
+    ;шагаем счётк и лупим если надо
+    inc a
+    ;если дошли до конца то на луп прыгаем    
+    cp h
+    jp nz,8f;не дошли до конца просто дальше идём    
+7:
+    ;ок, дошли до конца, прыгаем на луп
+    ld a,l    
+8:    
+    ;сохраняем новое значение счетчика
+    ld (notesBuffer+N*NB_SIZE+7),a
+    ;но играем текущее
+    ld a,b
+    ;берём дельту из инструмента    
+    or a
+    add a,a; у нас частота в два байта    
+    ld l,a : ld h,0 : add hl,de : ex hl,de
+    ld hl,(samplesList) : add hl,de    
+    ld c,(hl) : inc hl : ld b,(hl)    
+2:
+    pop hl;восстанавливаем частоту
+    add hl,bc;докидываем смещение из инструмента
+    ;пишем в порт
+    ld a,l : OUT  (PORT),a
+    ld a,h : OUT  (PORT),a
+1:
+N=N+1
+PORT=PORT-1    
+    edup
+    ret
+
+vktPlay:    
+    ret
+    ;сначала играем в буффер
+    call vktDoTick
+    ;применяя орнаменты и инструменты итп  и шлём всё в ВИ53
+    jp vktProcess
+
+vktDoTick:
+    ;speed
+    ld a,(speedTick) : dec a : ld (speedTick),a
+    or a : ret nz
+    ld a,(vtkSpeed) : ld (speedTick),a
+    ;отслеживаем смену патерна
+    ld hl,(currentTick)
+    ;читаем команду или ноту
+    ld a,(hl)
+    ;команда смены патерна
+    cp cmdPatChange : jp nz,1f    
+    ;ld a,2 : call getPatternAddr : ld (currentTick),hl    
+    call getNextPatternAddr : ld (currentTick),hl    
+1:
+    ;ch 1
+    ld hl,notesBuffer+0*NB_SIZE : ld (chBuffer),hl
+    ld hl,notesBuffer+0*NB_SIZE+2 : ld (chOrnaments),hl
+    ld hl,notesBuffer+0*NB_SIZE+5 : ld (chSamples),hl
+;    ld a,#36 : ld (currentCh),a
+    ld a,00110110b : ld (currentCh),a
+    call vktPlayCh
+    ;ch 2
+    ld hl,notesBuffer+1*NB_SIZE : ld (chBuffer),hl
+    ld hl,notesBuffer+1*NB_SIZE+2 : ld (chOrnaments),hl
+    ld hl,notesBuffer+1*NB_SIZE+5 : ld (chSamples),hl
+;    ld a,#76 : ld (currentCh),a
+    ld a,01110110b : ld (currentCh),a
+    call vktPlayCh
+    ret
+
+vktPlayCh:
+    ld hl,(currentTick)
+2:    
+    ;читаем команду или ноту
+    ld a,(hl)
+;====================================================    
+    ;команда изменения скорости
+    cp cmdSpeed : jp nz,1f
+    ;меняем скорость
+    inc hl : ld a,(hl) : ld (vtkSpeed),a : inc hl : ld (currentTick),hl
+    jp 2b
+1:
+;====================================================    
+    ;команда оффсета для орнамента
+    cp cmdOrnamentOffset : jp nz,1f    
+    inc hl : ld a,(hl) : inc hl : ld (currentTick),hl
+    ;ld hl,(chBuffer) :  inc hl : inc hl : inc hl  : ld (hl),a 
+    ld hl,(chOrnaments) :  inc hl : ld (hl),a 
+    ;вроде команда не инициализирует орнамент судя по докам, но проинитим, если что закоментить строчку ниже
+    inc hl : ld (hl),a
+    ;ld (Border),a
+    ld hl,(currentTick)
+    ;cp 3 : jp z,0
+    jp 2b
+1:
+;====================================================
+    ;Включить орнамент на текущий канал
+    cp cmdOrnament : jp nz,1f    
+    ;читаем номер орнамента и включаем его к текущему каналу
+    inc hl : ld a,(hl) : inc hl : ld (currentTick),hl    
+    ;ld hl,(chBuffer) : inc hl : inc hl : ld (hl),a
+chOrnaments equ $+1
+     ld hl,00000 : ld (hl),a
+    ;сбрасываем счетчик на 0
+    inc hl
+    ld (hl),0
+    inc hl
+    ;офсет тоже на ноль, команда 5 если что скорректирует
+    ld (hl),0;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ld hl,(currentTick);восстанавливаем счетчик        
+    jp 2b
+1:
+;====================================================    
+    ;команда оффсета для инструмента-сэмпла
+    cp cmdSampleOffset : jp nz,1f    
+    inc hl : ld a,(hl) : inc hl : ld (currentTick),hl
+    ;ld hl,(chBuffer) :  inc hl : inc hl : inc hl  : ld (hl),a 
+    ld hl,(chSamples) :  inc hl : ld (hl),a 
+    ;вроде команда не инициализирует инструмент, но это скорре всего про не сброс накопления, если что закоментить строчку ниже
+    inc hl : ld (hl),a
+    ;мигнём офсетом
+    ;ld (Border),a    
+    ld hl,(currentTick)    
+    jp 2b
+1:
+;====================================================
+    ;Включить сэмпл на текущий канал
+    cp cmdSample : jp nz,1f    
+    ;читаем номер орнамента и включаем его к текущему каналу
+    inc hl : ld a,(hl) : inc hl : ld (currentTick),hl    
+    //Сохраняем номер сэмпла
+chSamples equ $+1
+    ld hl,00000 : ld (hl),a
+    ;мигнём номером сэмпла
+    ;ld (Border),a
+    ;сбрасываем счетчик на 0
+    inc hl
+    ld (hl),0
+    inc hl
+    ;офсет тоже на ноль, команда 5 если что скорректирует
+    ld (hl),0;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    ld hl,(currentTick);восстанавливаем счетчик        
+    jp 2b
+;====================================================
+1:
+    ;команда отключения канала
+    cp cmdMuteCh : jp z,disableTimer
+    ;ничего не менялось?
+    or a : jp z,nextNote
+    ;если установлен 7-ой бит то включаем таймер и играем ноту - индекс ноты это значение без 7-го бита
+    rla : jp c,enableTimer    
+    ;ок просто изменение частоты
+    ld a,(hl) : jp playNote
+disableTimer:
+    ld  A,(currentCh)     ;выключить канал
+    OUT  (08),a       ;
+    ld hl,(chBuffer) : ld (hl),0;disable ch
+    jp nextNote       ;перейти к следующей ноте
+enableTimer:
+    ld  A,(currentCh)        ;включить канал
+    OUT  (08),a       ;
+    ld hl,(chBuffer) : ld (hl),1;enable ch
+    ld hl,(currentTick)
+    ;и сразу поиграть следующую ноту
+    ld a,(hl) : and 01111111b
+playNote:  
+    ;кладем ноту в буффер для проигрывания
+chBuffer EQU $+1
+    ld hl,notesBuffer 
+    inc hl  ;+1
+    ld (hl),a;note    
+    ;сбрасываем счетчик на старт - или из комманды 5
+    inc hl : inc hl
+    ld a,(hl);берем оффсет
+    inc hl
+    ld (hl),a;сохраняем позицию старта для офсета
+    ;ld (hl),0;!!!!!!!!!!!!!!!!!!!!!!!    
+nextNote:
+    ;переходим дальше
+    ld hl,(currentTick) : inc hl : ld (currentTick),hl
+    ret
+
+;in a - patern number
+getNextPatternAddr:
+    ;to next pat in play order
+    ld a,(currentPattern) : inc a : ld (currentPattern),a
+getPatternAddr:    
+    ;get new pat index from play order
+    ld e,a : ld d,0 : ld hl,(playOrder) : add hl,de : ld a,(hl)
+    ld l,a;save a
+    or a : rla ;check for bit 7        
+    jp nc,1f
+    ld a,l : and 01111111b : ld (currentPattern),a : jp getPatternAddr    
+1:
+    ld a,l;restore a
+
+    ;get pat addr from table
+    add a,a : ld d,0 : ld e,a : ld hl,(patterns) : add hl,de
+    ld a,(hl) : inc hl : ld h,(hl) : ld l,a
+notes equ $+1    
+    ld de,00000 : add hl,de
+    ret

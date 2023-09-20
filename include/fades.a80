@@ -1,0 +1,114 @@
+//fade In and fade out
+
+palette:
+    incbin "res\tiles.png.pal"
+
+
+
+;and table
+andTable:     
+
+    ;db 11111111b
+    ;db 11111110b
+    ;db 11111100b
+    ;db 11111000b
+    ;db 11110000b
+    ;db 11100000b
+    ;db 11000000b
+    ;db 10000000b
+    ;db 00000000b
+    
+     db 11111111b
+     db 11011111b
+     db 11001111b
+     db 11001011b
+     db 11001001b
+     db 11000001b
+     db 11000000b
+     db 10000000b
+     db 00000000b       
+
+
+;    db 11110000b
+;    db 11100000b
+;    db 11000000b
+;    db 10000000b
+;    db 00000000b
+
+initFadeIN:
+    ;init counter
+    ld a,9 : ld (doFade+1),a
+    ;init fade proc
+    ld hl,fadeIN : ld (fadeProc),hl
+    ld hl,andTable+8 : ld (hlFI),hl
+    ret
+
+initFadeOUT:
+    ;init counter
+    ld a,9 : ld (doFade+1),a
+    ;init fade proc
+    ld hl,fadeOUT : ld (fadeProc),hl
+    ld hl,andTable : ld (hlFO),hl
+    ret
+
+doFade: 
+    ld a,0 : or a : ret z;do counter
+    ld (palUpdateFlag),a;need update pal on next int
+    dec a : ld (doFade+1),a    
+fadeProc:   equ $+1
+    jp fadeIN
+
+fadeIN:    
+  ;  call doBaseActions
+
+hlFI: equ $+1
+         ld hl,andTable+8
+
+    ld bc,palette
+    ld de,workPal
+
+    ld a,16
+reFade:    
+    push af
+    ld a,(bc) : and (hl) : ld (de),a
+    inc bc : inc de
+    pop af : dec a : jp nz,reFade
+
+    dec hl
+    ld (hlFI),hl
+/*        
+    dup 16    
+    ld a,(bc) : and (hl) : ld (de),a
+    inc bc : inc de
+    edup
+    org $-2
+    dec hl
+    ld (hlFI),hl
+*/
+
+
+    ret
+    
+fadeOUT:
+  ;  call doBaseActions
+    ld de,workPal
+hlFO: equ $+1
+    ld hl,andTable
+
+    ld c,16
+1:    
+    ld a,(de) : and (hl) : ld (de),a : inc de    
+    dec c : jp nz,1b
+
+
+    inc hl : ld (hlFO),hl
+ 
+    ret
+ 
+fadeOUTOUT:
+	call initFadeOUT
+	ld a,10 
+1:
+	halt
+	dec a : jp nz ,1b
+    ret

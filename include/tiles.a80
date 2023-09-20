@@ -1,0 +1,53 @@
+
+;draw image base on tiles
+;hl - image addr
+;de - size
+;drawTileImage:
+;	ret
+
+//draw tilein tiles coords
+//b-x c-y a-tilenum*2 ()
+//SLOW FOR FIRST LEVEL DRAW
+drawTile:	
+	;get tile addr fromLUT
+	ld h,high tilesLUT : ld l,a
+	ld e,(hl) : inc l : ld d,(hl)
+
+	;get y and mult by 8 to tiles coords
+	ld a,c : inc a :  add a,a : add a,a : add a,a : dec a : ld c,a
+
+	//calc screen adrrs
+	ld hl,32768+8192*0 : add hl,bc	
+
+	//step to next plane delta
+	//ld bc,8192
+	;dup 8
+
+	ld b,8
+1:
+	push hl
+	push bc
+	ld bc,8192
+	dup 4
+	ld a,(de) : ld (hl),a
+	inc e;next tile byte
+	add hl,bc;to next plane
+	edup
+	org $-1
+	pop bc
+	pop hl
+	dec l
+	dec b : jp nz,1b
+	;edup
+	;org $-1
+	ret 
+
+
+
+
+TILE_PASS = 0
+TILE_SOLID = 1
+TILE_SOLID_V = 2
+TILE_SOLID_H = 3
+
+

@@ -1,0 +1,76 @@
+
+;simple fx system
+;just play all frames and restore tile at end
+;4 bytes
+FX_SIZE = 4
+fxList:
+    dup 24
+    db 254;counter 8,7,6,5,4,3,2,1,0-restore
+    db 0;base tile
+    dw 00000; y,x
+    edup
+
+    db 255;end list mark
+
+fxPointer: dw fxList
+
+resetFXS:
+    ld hl,fxList : ld a,24*FX_SIZE
+1:
+    ld (hl),254 :  dec a : jp nz,1b
+    ld hl,fxList : ld (fxPointer),hl
+    ret
+
+doFXS:
+    ;ld a,0 : inc a : and 1 : ld (doFXS+1),a : or a : ret z    
+
+    
+N=0
+    dup 24
+    ld hl,(fxList+N*FX_SIZE)
+    ld a,l : cp 254 : jp z,1f;skip if 0    
+    dec a : dec a 
+    ld (fxList+N*FX_SIZE),a;save count
+    or a : jp nz,2f
+    ld hl,(fxList+2+N*FX_SIZE);get coords
+    call restoreTile;restore under
+    ld a,254 : ld (fxList+N*FX_SIZE),a ;and kill
+    jp 1f
+2:
+    add h;add base frame    
+    ld hl,(fxList+2+N*FX_SIZE);get coords
+    call putTile;draw fx
+1:
+N=N+1    
+    edup
+
+
+    ret
+;hl -y,x a-tile
+;only 4 frames
+;addFX4:
+;    sub 8
+;    ex de,hl
+;    ld hl,(fxPointer)
+;    ld (hl),8 : inc hl;init counter
+;    jp addFxEntry
+addFX6:
+    sub 12
+    ex de,hl
+    ld hl,(fxPointer)
+    ld (hl),12 : inc hl;init counter
+    jp addFxEntry
+;hl -y,x a-tile
+addFX:
+    ex de,hl
+    ld hl,(fxPointer)
+    ld (hl),16 : inc hl;init counter
+addFxEntry:    
+    ld (hl),a : inc hl;add base frame
+    ld (hl),e : inc hl : ld (hl),d;save coords
+    inc hl
+    ld a,(hl) : cp 255 : jp nz,1f
+    ld hl,fxList;ring to start
+1:    
+    ld (fxPointer),hl;save new pointer
+    ret

@@ -1,0 +1,40 @@
+;hl - string pointer
+;y - in pixel, x*8
+drawText0:
+    inc de : ex hl,de
+drawText:
+    ld a,(hl): ld (btPlan+1),a : inc hl : ld a,(hl) : ld (btPlan+2),a : inc hl
+    ld c,(hl) : inc hl : ld b,(hl) : inc hl : ex hl,de
+btPlan:    ld hl,32768+8192*0 : add hl,bc : ld b,0
+reString:
+    ;dup 4    
+    
+    ld a,(de) 
+    cp 255 : ret z
+    cp 254 : jp z,drawText0;next string
+    push hl;save draw addr
+    sub 32+16 : ld l,a : ld h,0 : add hl,hl : add hl,hl : add hl,hl
+    ld bc,font : add hl,bc
+    ld c,l : ld b,h
+    pop hl;restore draw addr
+    push hl
+    dup 8
+    ld a,(bc) : ld (hl),a
+    dec l : inc bc
+    edup
+    org $-2
+    inc de
+    pop hl : inc h
+    jp reString
+    ;edup
+
+    ret
+
+pushFireText:
+    dw 32768+8192*0
+    db 64,10,"NAVMI=PROBEL",255
+pushFireNull:
+    dw 32768+8192*0
+    db 64,10,"============",255     
+
+font: incbin "font\wolf.bin",16*8,768-256-16*8

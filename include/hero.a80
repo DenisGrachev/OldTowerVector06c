@@ -1,0 +1,547 @@
+TILE_NULL = 0
+TILE_HERO_FLY = 16*2
+TILE_HERO_HIDE = 20*2
+
+;======================================
+TILE_HERO_LEG_DOWN = 112*2
+TILE_HERO_LEG_UP = 116*2
+TILE_HERO_LEG_RIGHT = 120*2
+TILE_HERO_LEG_LEFT = 124*2
+;======================================
+TILE_GHOST_LEG_LEFT = 53*2
+TILE_GHOST_LEG_RIGHT = 54*2
+TILE_GHOST_LEG_DOWN = 55*2
+TILE_GHOST_LEG_UP = 56*2
+;======================================
+
+TILE_PIKE_DOWN = 32*2
+TILE_PIKE_UP = 33*2
+TILE_PIKE_RIGHT = 34*2
+TILE_PIKE_LEFT = 35*2
+
+TILE_REFLECT_1 = 9*2;/////////
+TILE_REFLECT_2 = 10*2;\\\\\\\\
+
+TILE_ARROW_UP = 96*2
+TILE_ARROW_DOWN = 104*2
+
+TILE_BUSTER = 40*2
+
+
+
+TILE_CRACK_BLOCK = 11*2;
+TILE_HIDEN_BLOCK = 14*2;
+TILE_SOLID_BLOCK = 15*2;
+
+TILE_EAT = 48*2;
+TILE_COIN =49*2
+
+TILE_EXIT = 28*2;
+
+HERO_IDLE = 0
+HERO_FLY_LEFT = 1
+HERO_FLY_RIGHT = 2
+HERO_FLY_DOWN = 3
+HERO_FLY_UP = 4
+;=======================
+HERO_DEAD = 5
+HERO_WIN = 6
+
+
+heroOneTileUnder: dw TILE_NULL
+heroOneBaseFrame: dw TILE_HERO_LEG_DOWN
+heroOneGhostFrame: dw TILE_GHOST_LEG_DOWN
+
+heroTwoTileUnder: dw TILE_NULL
+heroTwoBaseFrame: dw TILE_HERO_LEG_DOWN
+heroTwoGhostFrame: dw TILE_GHOST_LEG_DOWN
+
+currentGhostTile: dw TILE_GHOST_LEG_DOWN
+
+heroPosition: dw 00000
+;=======================================
+;for animations
+heroAnim: db 0
+heroFrame: db 0
+;=======================================
+heroState:  db HERO_IDLE
+;=======================================
+
+
+initHero:
+    xor a : ld (heroAnim),a : ld (heroFrame),a
+    ld a,HERO_IDLE : ld (heroState),a
+    ld a,TILE_HERO_LEG_DOWN : ld (heroBaseFrame),a   
+    ld a,TILE_NULL : ld (heroOneTileUnder),a : ld (heroTwoTileUnder),a
+    ld a,TILE_HERO_LEG_DOWN : ld (heroOneBaseFrame),a : ld (heroTwoBaseFrame),a
+    ld a,TILE_GHOST_LEG_DOWN : ld (heroOneGhostFrame),a : ld (heroTwoGhostFrame),a : ld (currentGhostTile),a
+    ld hl,switchToHero2 : ld (switchHeroProc),hl    
+    ld hl,00000 : ld (tileUnderLegsCoords),hl
+    ret
+
+
+doHero:    
+    //check if we win or die then skip  
+    ld a,(heroState)
+    cp HERO_DEAD
+    ret nc
+
+    cp HERO_IDLE
+    call z,tryToSwitch
+
+    call checkUnderHero;DEATH OR COLLECT OR EXIT ETC %)
+
+delayControls: equ $+1
+    ld a,0 : or a : jp z,1f
+    dec a : ld (delayControls),a : jp 2f
+1:
+    call doHeroControl    
+2:
+    call doHeroAction
+    ;call checkUnderHero;DEATH OR COLLECT OR EXIT ETC %)
+    call doHeroAnimations    
+    call checkEnemies
+    ret
+
+
+checkEnemies:
+    ;check hero to kill if it alive            
+    ld hl,(heroPosition)
+    ld c,h;save base x
+N=0
+    dup 6    
+    ;ld hl,(heroPosition)
+    ld h,c;rest base x
+    ;get y    
+    ld a,(enemiesList+N*ENEMY_SIZE)
+    cp l
+    jp nz,1f
+    ;hero X*8 = real
+    ld a,h : or a : add a,a : or a : add a,a : or a : add a,a : ld h,a
+    ld a,(enemiesList+N*ENEMY_SIZE+5);enemy real X
+    ;cp h
+    ;jp nz,1f
+    or a
+    sub h
+    add 6
+    cp 13
+    jp nc,1f   
+    //kill hero
+    jp killHero
+1:
+N=N+1    
+    edup
+    ret
+
+tryToSwitch:    
+    ret
+    ;don't switch on exit
+    ;ld hl,(heroPosition) : call getTile
+    ;cp TILE_EXIT : ret z
+    ;don't switch on other hero
+    ld hl,(tileUnderLegsCoords) : call getTile
+    cp TILE_GHOST_LEG_DOWN : ret z
+    cp TILE_GHOST_LEG_UP : ret z
+    cp TILE_GHOST_LEG_LEFT : ret z
+    cp TILE_GHOST_LEG_RIGHT : ret z
+
+
+    ld a,(KeyKod7)
+    cp SPACE
+    jp nz,wasUp
+forceSwitch:        
+switchHeroProc: equ $+1    
+    jp switchToHero2
+wasUp:
+    ld a,1 : ld (wasKeyUp),a
+    ret    
+    
+wasKeyUp: db 0
+
+switchToHero2:    
+    ld a,(wasKeyUp) : or a : ret z
+    ;reset key up event
+    xor a : ld (wasKeyUp),a    
+    //save base frame
+    ld a,(heroBaseFrame) : ld (heroOneBaseFrame),a
+    //save ghost frame
+    ld a,(currentGhostTile) : ld (heroOneGhostFrame),a
+    //save current coords
+    ld hl,(heroPosition) : ld (map+50*14),hl
+    //save tile under current hero
+    call getTile : ld (heroOneTileUnder),a
+    //put GHOST tile on current    
+    ld a,(currentGhostTile) : ld (hl),a : ld a,(heroTwoGhostFrame) : ld (currentGhostTile),a
+    
+    //add some switch FX
+    ld hl,(heroPosition) : ld a,TILE_HERO_HIDE : call addFX
+
+    //switch hero pistion to second one
+    ld hl,(map+50*14+2) : ld (heroPosition),hl
+    
+    //save tile under
+    call getTile;get map addr    
+    ld a,(heroTwoTileUnder) : ld (hl),a
+    ;!!!!!!!!!!!!!!ADDD ORIENTATION!!!!!!!!!!!!!!!
+    ld a,(heroTwoBaseFrame) : ld (heroBaseFrame),a
+    //restore tile in new position and set hero coords and orientation to new base on tile in new position
+    //save tile under current position
+    //put ghost tile on current position based on current leg pos
+    ld hl,switchToHero1 : ld (switchHeroProc),hl    
+    ld hl,sfxReflect : jp playSFX    
+    ;ret
+
+switchToHero1:    
+    ld a,(wasKeyUp) : or a : ret z
+    ;reset key up event
+    xor a : ld (wasKeyUp),a 
+    //save base frame
+    ld a,(heroBaseFrame) : ld (heroTwoBaseFrame),a
+    //save ghost frame
+    ld a,(currentGhostTile) : ld (heroTwoGhostFrame),a
+    //save current coords
+    ld hl,(heroPosition) : ld (map+50*14+2),hl
+    
+    //save tile under current hero
+    call getTile : ld (heroTwoTileUnder),a
+
+    //put GHOST tile on current          
+    ld a,(currentGhostTile) : ld (hl),a : ld a,(heroOneGhostFrame) : ld (currentGhostTile),a
+    //add some switch FX
+    ld hl,(heroPosition) : ld a,TILE_HERO_HIDE : call addFX
+
+    //switch hero pistion to second one
+    ld hl,(map+50*14) : ld (heroPosition),hl
+    //save tile under
+    ;!!!!!!!!!!!!!!ADDD ORIENTATION!!!!!!!!!!!!!!!
+    call getTile;get map addr
+    ld a,(heroOneTileUnder) : ld (hl),a
+
+    ld a,(heroOneBaseFrame) : ld (heroBaseFrame),a
+
+    //restore tile in new position and set hero coords and orientation to new base on tile in new position
+    //save tile under current position
+    //put ghost tile on current position based on current leg pos
+    ld hl,switchToHero2 : ld (switchHeroProc),hl
+    ld hl,sfxReflect : jp playSFX    
+    ;ret
+
+killHero:
+    ld a,HERO_DEAD : ld (heroState),a
+    ;hl -y,x a-tile
+    ld hl,(heroPosition) : ld a,TILE_HERO_HIDE : call addFX
+    //reset hero pos to x=0
+    ;xor a : ld (heroPosition+1),a
+    ;jp 0
+    ld a,GS_WAIT_FIRE : ld (gameState),a : ld a,GS_RESTART_LEVEL : ld (nextGameState),a
+    call addDeath
+    ld hl,sfxDead : jp playSFX    
+
+winGhostHero:
+    ld a,#c9 : ld (tryToSwitch),a;prohibit switch
+    ;hide ghost hero
+    push hl;save coords
+    ld a,TILE_HERO_HIDE : call addFX    
+    pop hl;rest coords
+    call getTile : ld (hl),0
+    ret
+winHero:     
+    ;hl -y,x a-tile
+    ld hl,(heroPosition) : ld a,TILE_HERO_HIDE : call addFX
+    ld hl,(heroPosition) : call getTile ;addr on
+    //check if there is a second hero, then switch and prohibit switch
+    ld a,(tryToSwitch) : or a : jp nz,2f
+    push hl 
+    call forceSwitch
+    ld a,HERO_IDLE : ld (heroState),a
+
+    pop hl : ld (hl),0
+
+    ld a,#c9 : ld (tryToSwitch),a;prohibit switch
+    ;add some delay to key Up time
+    ld a,20 : ld (delayControls),a
+
+
+    ret
+2:
+    ;WIN LEVEL
+    ld a,HERO_WIN : ld (heroState),a
+    ;jp 0
+    ld a,GS_WAIT_FIRE : ld (gameState),a : ld a,GS_NEXT_LEVEL : ld (nextGameState),a
+    ld hl,sfxWin : jp playSFX
+
+
+checkUnderHero:
+    ld hl,(heroPosition) : call getTile ;on exit hl points to map
+
+    cp TILE_BUSTER
+    jp nz,1f
+    ld a,(heroState)    
+    cp HERO_FLY_DOWN : jp z,heroReflectUp
+    jp heroReflectDown
+1:
+
+    cp TILE_REFLECT_1
+    jp nz,1f
+    ld a,(heroState)
+    cp HERO_FLY_RIGHT : jp z,heroReflectUp
+    cp HERO_FLY_LEFT : jp z,heroReflectDown
+    cp HERO_FLY_DOWN : jp z,heroReflectLeft
+    jp heroReflectRight
+1:
+
+    cp TILE_REFLECT_2
+    jp nz,1f
+    ld a,(heroState)
+    cp HERO_FLY_RIGHT : jp z,heroReflectDown
+    cp HERO_FLY_LEFT : jp z,heroReflectUp
+    cp HERO_FLY_DOWN : jp z,heroReflectRight
+    jp heroReflectLeft
+1:
+
+
+    cp TILE_HIDEN_BLOCK
+    jp nz,1f
+    ld (hl),TILE_SOLID_BLOCK;put null tile under
+    ld hl,sfxShow : jp playSFX
+1:
+
+    cp TILE_SOLID_BLOCK
+    ret z
+
+    cp TILE_EAT
+    jp nz,1f
+    ld (hl),0;put null tile under
+    ld a,(totalDots) : dec a : ld (totalDots),a
+    push af : call addGold : pop af
+    or a : jp nz,playCollectSound
+    ld hl,sfxExit : jp playSFX
+1:
+    cp TILE_COIN
+    jp nz,1f
+    ld (hl),0;put null tile under    
+    ld a,(totalDots) : dec a : ld (totalDots),a
+    push af : call addGold : pop af
+    or a : jp nz,playCollectSound
+    ld hl,sfxExit : jp playSFX
+1:
+    cp TILE_EXIT
+    jp nz,1f
+    ld a,(totalDots) : or a : ret nz
+    ld (hl),0;put null tile under - disable door
+    jp winHero
+1:
+
+    ld hl,(heroPosition) : call getTileType
+    cp TILE_SOLID
+    jp nc,killHero
+
+    ret
+
+doHeroAction:
+;    ld a,0 : inc a : and 1 : ld (doHeroAction+1),a : or a : ret z
+    ld a,(heroState)
+    ;idle - nothing to do
+    cp HERO_IDLE : ret z
+    cp HERO_FLY_RIGHT : jp z,heroFlyRight
+    cp HERO_FLY_LEFT : jp z,heroFlyLeft
+    cp HERO_FLY_UP : jp z,heroFlyUp
+    cp HERO_FLY_DOWN : jp z,heroFlyDown
+    ret
+
+heroReflectUp:
+    ld a,HERO_FLY_UP : ld (heroState),a
+    ld a,TILE_HERO_LEG_UP : ld (heroLandFrame),a   
+    ld a,TILE_GHOST_LEG_UP : ld (currentGhostTile),a
+    jp playReflectSound
+
+heroReflectDown:
+    ld a,HERO_FLY_DOWN : ld (heroState),a
+    ld a,TILE_HERO_LEG_DOWN : ld (heroLandFrame),a   
+    ld a,TILE_GHOST_LEG_DOWN : ld (currentGhostTile),a
+    jp playReflectSound
+
+heroReflectLeft:
+    ld a,HERO_FLY_LEFT : ld (heroState),a
+    ld a,TILE_HERO_LEG_LEFT : ld (heroLandFrame),a   
+    ld a,TILE_GHOST_LEG_LEFT : ld (currentGhostTile),a
+    jp playReflectSound
+
+heroReflectRight:
+    ld a,HERO_FLY_RIGHT : ld (heroState),a
+    ld a,TILE_HERO_LEG_RIGHT : ld (heroLandFrame),a   
+    ld a,TILE_GHOST_LEG_RIGHT : ld (currentGhostTile),a
+playReflectSound:
+    ld a,4 : ld (priorityCounter),a; play shoot for 4 frames    
+    ld hl,sfxShow : jp playSFXForce    
+
+heroFlyRight:
+    ;ld hl,(heroPosition) : inc h : call getTileType
+    ld hl,(heroPosition) : inc h : ld (tileUnderLegsCoords),hl : call getTileType        
+    CP TILE_SOLID : jp z,landHero
+    cp TILE_SOLID_H : jp z,landHero     
+    ld hl,(heroPosition) : ld a,40*2 : call addFX
+    ld a,(heroPosition+1) : inc a : ld (heroPosition+1),a                
+    ret    
+
+heroFlyLeft:    
+    ;ld hl,(heroPosition) : dec h : call getTileType
+    ld hl,(heroPosition) : dec h :  ld (tileUnderLegsCoords),hl : call getTileType        
+    CP TILE_SOLID : jp z,landHero
+    cp TILE_SOLID_H : jp z,landHero     
+    ld hl,(heroPosition) : ld a,56*2 : call addFX
+    ld a,(heroPosition+1) : dec a : ld (heroPosition+1),a    
+    ret    
+
+heroFlyUp:
+    ;ld hl,(heroPosition) : dec l : call getTileType
+    ld hl,(heroPosition) : dec l :  ld (tileUnderLegsCoords),hl : call getTile
+    cp TILE_ARROW_DOWN : jp z,landHero
+    call getTileType0
+    CP TILE_SOLID : jp z,landHero
+    cp TILE_SOLID_V : jp z,landHero    
+    ld hl,(heroPosition) : ld a,96*2 : call addFX
+    ld a,(heroPosition) : dec a : ld (heroPosition),a    
+    ret    
+
+heroFlyDown:
+    ;ld hl,(heroPosition) : inc l : call getTileType    
+    ld hl,(heroPosition) : inc l : ld (tileUnderLegsCoords),hl
+    call getTile
+    cp TILE_ARROW_UP : jp z,landHero
+    call getTileType0
+    CP TILE_SOLID : jp z,landHero
+    cp TILE_SOLID_V : jp z,landHero     
+    ld hl,(heroPosition) : ld a,104*2 : call addFX
+    ld a,(heroPosition) : inc a : ld (heroPosition),a    
+    ret   
+
+tileUnderLegsCoords: dw 00000
+;tileUnderLegsCoordsTmp: dw 00000
+
+    ;call checkCrack
+landHeroQuiet:       
+landHero:    
+   ; ld hl,(tileUnderLegsCoordsTmp) : ld (tileUnderLegsCoords),hl
+   ; ld hl,00000 : ld (tileUnderLegsCoordsTmp),hl
+    ld a,HERO_IDLE : ld (heroState),a
+heroLandFrame equ $+1
+    ld a,TILE_HERO_LEG_DOWN : ld (heroBaseFrame),a    
+    ;jp resetCollectSound
+    ;ld hl,sfxLand : call playSFX
+    ret
+
+;landHeroQuiet:
+;    ld a,HERO_IDLE : ld (heroState),a
+;    ld a,(heroLandFrame) : ld (heroBaseFrame),a        
+;    ret
+
+doHeroControl:
+    ;check if we landed
+    ld a,(heroState)
+    cp HERO_IDLE : ret nz
+    ;===========================
+    ;ok landed, check keyboard and start move
+    ld a,(KeyKod0)
+    CP Left
+    jp z,tryMoveLeft
+    CP Right
+    jp z,tryMoveRight
+    CP Up
+    jp z,tryMoveUp
+    CP Down
+    jp z,tryMoveDown
+
+    ret
+
+checkCrack:
+    ;check if crack tile under legs then kill them    
+    ld hl,(tileUnderLegsCoords) : call getTile : cp TILE_CRACK_BLOCK : ret nz
+    ld (hl),0        
+    ;put fx
+    ld hl,(tileUnderLegsCoords) : ld a,TILE_HERO_HIDE : call addFX
+    ld hl,00000 : ld (tileUnderLegsCoords),hl    
+    ld a,4 : ld (priorityCounter),a; play shoot for 4 frames
+    ld hl,sfxShow : jp playSFXForce
+
+    ;ld hl,sfxShow : jp playSFX
+    ;ret
+
+tryMoveLeft:    
+    ld a,(heroLandFrame) : cp TILE_HERO_LEG_LEFT : call nz,checkCrack        
+
+    ld a,TILE_HERO_LEG_LEFT : ld (heroLandFrame),a        
+    ld a,TILE_GHOST_LEG_LEFT : ld (currentGhostTile),a
+
+    ld hl,(heroPosition) : dec h : ld (tileUnderLegsCoords),hl
+    call getTile
+    cp TILE_PIKE_RIGHT : jp z,1f
+    call getTileType0 : cp TILE_SOLID : jp nc,landHeroQuiet   
+1:
+
+    ld a,HERO_FLY_LEFT : ld (heroState),a    
+    ld a,TILE_HERO_FLY : ld (heroBaseFrame),a        
+    ld hl,sfxFly : call playSFX    
+    ret
+tryMoveRight:    
+    ld a,(heroLandFrame) : cp TILE_HERO_LEG_RIGHT : call nz,checkCrack    
+
+    ld a,TILE_HERO_LEG_RIGHT : ld (heroLandFrame),a
+    ld a,TILE_GHOST_LEG_RIGHT : ld (currentGhostTile),a
+
+    ld hl,(heroPosition) : inc h : ld (tileUnderLegsCoords),hl
+    
+    call getTile
+    cp TILE_PIKE_LEFT : jp z,1f
+    call getTileType0 : cp TILE_SOLID : jp nc,landHeroQuiet    
+1:    
+    ld a,HERO_FLY_RIGHT : ld (heroState),a    
+    ld a,TILE_HERO_FLY : ld (heroBaseFrame),a    
+    ld hl,sfxFly : call playSFX    
+    ret
+tryMoveUp:    
+    ld a,(heroLandFrame) : cp TILE_HERO_LEG_UP : call nz,checkCrack
+
+    ld a,TILE_HERO_LEG_UP : ld (heroLandFrame),a
+    ld a,TILE_GHOST_LEG_UP : ld (currentGhostTile),a
+
+    ld hl,(heroPosition) : dec l : ld (tileUnderLegsCoords),hl : call getTile
+    cp TILE_ARROW_DOWN : jp z,landHeroQuiet
+    cp TILE_PIKE_DOWN : jp z,1f  
+    call getTileType0
+    cp TILE_SOLID : jp nc,landHeroQuiet    
+1:    
+    ld a,HERO_FLY_UP : ld (heroState),a    
+    ld a,TILE_HERO_FLY : ld (heroBaseFrame),a        
+    ld hl,sfxFly : call playSFX    
+    ret
+tryMoveDown:    
+    ld a,(heroLandFrame) : cp TILE_HERO_LEG_DOWN : call nz,checkCrack    
+
+    ld a,TILE_HERO_LEG_DOWN : ld (heroLandFrame),a
+    ld a,TILE_GHOST_LEG_DOWN : ld (currentGhostTile),a
+
+
+    ld hl,(heroPosition) : inc l : ld (tileUnderLegsCoords),hl : call getTile
+    cp TILE_ARROW_UP : jp z,landHeroQuiet
+    cp TILE_PIKE_UP : jp z,1f
+    call getTileType0
+    cp TILE_SOLID : jp nc,landHeroQuiet  
+1:  
+    ld a,HERO_FLY_DOWN : ld (heroState),a    
+    ld a,TILE_HERO_FLY : ld (heroBaseFrame),a        
+    ld hl,sfxFly : call playSFX    
+    ret
+
+
+doHeroAnimations:
+    ld a,(heroFrame) : inc a : and 3 : ld (heroFrame),a : or a : jp nz,1f
+;===============================================================================
+    ld a,(heroAnim) : inc a : inc a : and 7 : ld (heroAnim),a    
+;===============================================================================    
+1:
+    ld hl,(heroPosition)
+    ld a,(heroAnim)
+heroBaseFrame: EQU $+1
+    add TILE_HERO_LEG_DOWN : jp putTile    
+    ;ret

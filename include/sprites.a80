@@ -1,0 +1,269 @@
+
+//process sprites
+resetSprites:
+	xor a
+	;reset sprites
+N=0	
+	dup MAX_SPRITES
+    ;reset draw
+    ld (spritesList+N*SPRITE_SIZE),a	
+N=N+1		
+	edup	
+
+	;reset render pointer
+	ld hl,spritesList : ld (renderPointer),hl
+	ret	
+
+renderPointer: dw spritesList
+
+//put tile to tilemap and redraw
+//hl - l=y,h=x in tile coords
+//a - tile to draw
+putTile:
+	;save tile
+	ld (tile+1),a
+	;save coords
+	ld (coords+1),hl
+;CHECK IF VISIBLE
+    ;TOP
+   ; ld hl,(coinsList+COIN_SIZE*N);get y and x
+    ld a,(globalPointer8)     
+    inc l
+    cp l
+    jp nc,9f;notVisible
+    dec l
+    add 27
+    cp l
+    jp c,9f;not visible
+;OK - IT VISIBLE	
+;top cropped
+    ld a,(globalPointer8)    
+    cp l
+    jp z,7f;eq    
+;bottom cropped    
+    add 27
+    cp l
+    jp z,8f
+;DRAW FULL  	
+	ld hl,(renderPointer)
+	ld a,8 : ld (hl),a : inc l;number of lines
+	xor a : ld (hl),a : inc l;where start	
+    jp 1f
+;DRAW TOP CROPPED
+7:    		
+    ;STRIP TOP A BIT
+	;STRIP A BIT
+    ld a,(globalPointer) : and 7    
+    ;ld (spritesList+N*SPRITE_SIZE+1),a ;where start to draw
+    or a : ld c,a : ld a,8 : sub c    
+    ;ld (spritesList+N*SPRITE_SIZE),a ;number of lines to draw
+	ld hl,(renderPointer)
+	ld (hl),a
+	inc l
+	ld (hl),c
+	inc l
+    jp 1f
+8:    
+	;STRIP BOTTOM A BIT
+    ;xor a : ld (spritesList+N*SPRITE_SIZE+1),a;always from 0 line start draw
+    ld a,(globalPointer) : and 7        
+    ;ld (spritesList+N*SPRITE_SIZE),a ;number of lines
+	ld hl,(renderPointer)
+	ld (hl),a;number of lines to draw
+	inc l
+	ld (hl),0;where start to draw
+	inc l
+    jp 1f
+1:
+	;ok, in hl - point to where to draw
+
+	;calc draw addr 
+	push hl
+
+coords:	ld de,00000 : ld a,e : add a,a 
+	ld h,high addrLUT : ld l,a : ld a,(hl) : inc l : ld h,(hl) : ld l,a
+;	ld a,9 : add d : ld d,a;move to tower
+	ld e,0 : add hl,de;add X
+  	dec l;can be fixed from preproc or move everything up????????????????????
+	ex de,hl
+
+	pop hl
+	;save where to draw
+	ld (hl),e : inc l : ld (hl),d : inc l
+	;now calc what to draw
+	push hl
+	ld h,high tilesLUT
+tile:	ld l,0
+	ld a,(hl) : inc l : ld h,(hl) : ld l,a
+	ex de,hl
+	pop hl
+	;save what to draw
+	ld (hl),e : inc l : ld (hl),d
+	
+	;ok, now put this tile to tile map
+	
+
+
+    ;get draw addr and attach to sprite
+   ; ld hl,(coinsList+COIN_SIZE*N+2)
+   ; dec l;can be fixed from preproc or move everything up????????????????????
+   ; ld (spritesList+N*SPRITE_SIZE+2),hl
+
+	;move render pointer only if drawed tile
+	ld hl,(renderPointer) : ld de,SPRITE_SIZE : add hl,de : ld (renderPointer),hl
+;notVisible:
+9:
+	ret
+
+//restore tile at position from base tilemap, put to draw tile map and draw it
+//get tile from base tile map and call put tile
+//hl - coords
+restoreTile:
+	push hl : call getTile : pop hl : jp putTile
+
+getTile
+	ex hl,de
+	ld h,high mapLUT : ld a,e : add a,a : ld l,a
+	;put to hl mapline addr
+	ld a,(hl) : inc l : ld h,(hl) : ld l,a
+	;add x
+	ld a,d : sub 9 : ld d,0 : ld e,a : add hl,de
+	;get tile
+	ld a,(hl)
+	ret	
+
+getTileType:	
+	call getTile
+getTileType0:				
+	ld h,high collisions : ld l,a	
+	ld a,(hl)	
+	ret
+
+//same as tile but stripped and animated
+
+
+drawSprites:	
+
+	di
+
+	;save stack
+	ld hl,00000 : add hl,sp : ld (dsStack+1),hl
+
+;reset visible sprites count
+	xor a : ld (visibleSprites),a
+
+	ld a,MAX_SPRITES : ld (spCounter),a
+	ld hl,spritesList : ld (spList),hl
+reSprite:
+	//de - screen adress
+	//hl - tileStartLine
+	//c - number of lines
+spList: equ $+1
+	ld hl,spritesList;+N*SPRITE_SIZE	
+	ld a,l : add 6 : ld (spList),a;step to next sprite
+
+	ld a,(hl) : or a : jp z,4f : ld c,a : inc l ;number of lines, if zero lines then skip draw
+;inc visible sprites	
+visibleSprites: equ $+1
+	ld a,0 : inc a : ld (visibleSprites),a
+
+	ld a,(hl) : ld e,a;save to d
+	add a,a : add a,a : inc l : ld b,a ;top lines  x4 since x4
+	
+	ld a,(hl) : sub e : ld e,a : inc l : ld d,(hl);de-where to draw
+
+	;get frame count
+
+	inc l : ld a,(hl) : add b : inc l : ld h,(hl) : ld l,a;hl what to draw
+
+	ld sp,hl;where read tile
+	ex de,hl;put where to draw to hl
+
+	;store h
+	ld a,h
+	ld b,32
+	dup 8
+	;ld a,h
+	pop de;get 2 bytes	
+	ld (hl),e : add b : ld h,a ;add hl,bc
+	ld (hl),d : add b : ld h,a;add hl,bc
+	pop de;get 2 bytes
+	ld (hl),e : add b : ld h,a;add hl,bc
+	ld (hl),d
+	or a : dec c : jp z,4f;check if line is ended	
+	sub 32*3 : ld h,a;ld h,b;restore h
+	dec l;step down
+	edup
+	org $-9
+4:
+
+spCounter equ $+1
+		ld a,0 : dec a : ld (spCounter),a : jp nz,reSprite
+
+dsStack:
+	ld sp,00000
+
+	ei
+
+	ret
+
+
+
+
+/*
+
+drawSprites:	
+	;save stack
+	ld hl,00000 : add hl,sp : ld (dsStack+1),hl
+N=0
+	dup MAX_SPRITES
+	//de - screen adress
+	//hl - tileStartLine
+	//c - number of lines
+	ld hl,spritesList+N*SPRITE_SIZE
+	;ld c,(hl) : inc l : ;number of lines
+	ld a,(hl) : or a : jp z,4f : ld c,a : inc l ;number of lines, if zero lines then skip draw
+	ld a,(hl) : ld e,a;save to d
+	add a,a : add a,a : inc l : ld b,a ;top lines  x4 since x4
+	;inc l
+	
+	
+	ld a,(hl) : sub e : ld e,a : inc l : ld d,(hl);de-where to draw
+
+	;get frame count
+
+	inc l : ld a,(hl) : add b : inc l : ld h,(hl) : ld l,a;hl what to draw
+
+	;add frame count
+	;inc l : ld a,(hl) : add l : ld l,a
+
+N=N+1
+	;ld de,32768+8 : ld hl,testTile: ld c,8 	
+
+	ld sp,hl;where read tile
+	ex de,hl;put where to draw to hl
+
+	;store h
+	ld a,h
+	ld b,32
+	dup 8
+	;ld a,h
+	pop de;get 2 bytes	
+	ld (hl),e : add b : ld h,a ;add hl,bc
+	ld (hl),d : add b : ld h,a;add hl,bc
+	pop de;get 2 bytes
+	ld (hl),e : add b : ld h,a;add hl,bc
+	ld (hl),d
+	or a : dec c : jp z,4f;check if line is ended	
+	sub 32*3 : ld h,a;ld h,b;restore h
+	dec l;step down
+	edup
+	;org $-8
+4:
+	edup
+dsStack:
+	ld sp,00000
+
+	ret
+
+*/

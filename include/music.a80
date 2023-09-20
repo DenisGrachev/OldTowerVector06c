@@ -1,0 +1,65 @@
+
+;music manager
+
+currentMusic: db 255
+
+tryStopMusic:
+    ld a,(currentLevel)
+    cp 5
+    jp z,vktStop
+    cp 10
+    jp z,vktStop
+    cp 15
+    jp z,vktStop
+    cp 20
+    jp z,vktStop
+    ret
+
+manageMusic:
+    ld a,(currentLevel)
+    cp 6
+    jp nc,1f
+    ld a,1 : jp playMusic
+1:
+    cp 11
+    jp nc,1f
+    ld a,2 : jp playMusic
+1:
+
+    cp 16
+    jp nc,1f
+    ld a,1 : jp playMusic
+1:
+    ld a,2 : jp playMusic    
+
+;a-music num
+playMusic:
+	ld e,a : ld a,(currentMusic) : cp e : ret z
+    ld a,e : ld (currentMusic),a
+    or a : jp z,playMusic0
+    cp 1 : jp z,playMusic1
+    cp 2 : jp z,playMusic2
+;play default music
+	ret
+;    ld de,music0Packed : jp playPlay
+playMusic0:
+;	ret
+    ld de,music0Packed : jp playPlay    
+playMusic1:
+    ld de,music1Packed : jp playPlay 
+playMusic2:
+    ld de,music2Packed
+playPlay:
+    ld bc,module : call dzx0
+    ld hl,module : jp vktInit    
+    ret
+
+music0Packed: incbin "music\music0.zx0"
+music1Packed: incbin "music\music1.zx0"
+music2Packed: incbin "music\music2.zx0"
+;music upacked buf
+module:    
+;=============================================================
+	incbin "music\music2.vtk"
+;    block 3813-($-introText),0
+    ;incbin "music\music2.vtk"     
