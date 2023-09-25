@@ -177,9 +177,6 @@ CH=#36
     ;смотрим включен ли орнамент    
     ;если нет то скипаем
     ld a,(notesBuffer+N*NB_SIZE+2) : or a : jp z,2f      
-
-  ;  jp 2f
-
     ;описание одного орнамента 4 байта
     add a,a : add a,a : ld e,a : ld d,0
     ld hl,(ornamentsList) : add hl,de    
@@ -230,10 +227,7 @@ CH=#36
     
     ;смотрим включен ли инструмент, если что берем из него дельту
     ld a,(notesBuffer+N*NB_SIZE+5) : or a : jp z,2f     
-
-  ;  jp 2f     
-;    ld (Border),a
-    
+   
     ;описание одного инструмента 4 байта
     add a,a : add a,a : ld e,a : ld d,0
     ld hl,(samplesList) : add hl,de    
