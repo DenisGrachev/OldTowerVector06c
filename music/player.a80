@@ -82,6 +82,7 @@ speedTick:  db 1
 ;HL - header16byte + module adress
 ;16 bytes header
 vktInit:  
+    call vktStop
     push hl           
     ld de,16 : add hl,de : ex hl,de;skip header
     pop bc    
@@ -122,11 +123,8 @@ vktStop:
     ld a,#c9 : ld (vktPlay),a
     ;смотрим, если канал включен то выключаем
 CH = #36
-    dup CHANNELS  
-    ;если канал отключен то скипаем
-    ld a,(notesBuffer+N*NB_SIZE) : or a : jp z,1f
-    ;иначе гасим )
-    ld  A,CH     ;инит каналов
+    dup CHANNELS      
+    ld  A,CH     ;
     OUT  (08),a       ;
 CH = CH + #40;next ch
     edup        
