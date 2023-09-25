@@ -126,7 +126,7 @@ CH = #36
     ;если канал отключен то скипаем
     ld a,(notesBuffer+N*NB_SIZE) : or a : jp z,1f
     ;иначе гасим )
-    ld  A,CH     ;выключить канал
+    ld  A,CH     ;инит каналов
     OUT  (08),a       ;
 CH = CH + #40;next ch
     edup        
@@ -270,13 +270,12 @@ CH=#36
    
     ld a,(notesBuffer+N*NB_SIZE+8) : or a : jp nz,3f
     ld (notesBuffer+N*NB_SIZE+8),a
-    ld a,CH : out (08),a;dis chan
+    ld a,CH : out (08),a;disable chan
 3:
     pop hl : jp 1f    
 4:
     ld a,(notesBuffer+N*NB_SIZE+8) : or a : jp z,2f
-    xor a : ld (notesBuffer+N*NB_SIZE+8),a
-    ld a,CH : out (08),a;enable chan
+    xor a : ld (notesBuffer+N*NB_SIZE+8),a   
 ;==============================================
 
 2:
@@ -285,10 +284,6 @@ CH=#36
     ;пишем в порт
     ld a,l : OUT  (PORT),a
     ld a,h : OUT  (PORT),a
-    ;ld  a,(hl)
-    ;OUT  (PORT),a
-    ;inc l : ld A,(hl)
-    ;OUT  (PORT),a
 1:
 N=N+1
 PORT=PORT-1   
@@ -441,8 +436,6 @@ disableTimer:
     ld hl,(chBuffer) : ld (hl),0;disable ch
     jp nextNote       ;перейти к следующей ноте
 enableTimer:
-    ;ld  A,(currentCh)        ;включить канал
-    ;OUT  (08),a       ;
     ld hl,(chBuffer) : ld (hl),1;enable ch
     ld hl,(currentTick)
     ;и сразу поиграть следующую ноту
