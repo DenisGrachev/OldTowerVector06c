@@ -31,7 +31,7 @@ SPRITES_LIMIT_TO_COINS = 16	;при достижении какого колли
 	include "include\hero.a80"
 	include "include\guns.a80"
 	include "include\fx.a80"
-	include "music\player.a80"
+	include "music\player.a80"	
 	include "include\sound.a80"
 	include "include\gsGameplay.a80"
 	include "include\gsMenu.a80"

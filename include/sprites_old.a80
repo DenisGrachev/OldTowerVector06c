@@ -73,7 +73,7 @@ putTile:
 	inc l
 	ld (hl),0;where start to draw
 	inc l
-;    jp 1f
+    jp 1f
 1:
 	;ok, in hl - point to where to draw
 
@@ -134,6 +134,7 @@ getTileType0:
 
 //same as tile but stripped and animated
 
+
 drawSprites:	
 
 	di
@@ -154,9 +155,7 @@ spList: equ $+1
 	ld hl,spritesList;+N*SPRITE_SIZE	
 	ld a,l : add 6 : ld (spList),a;step to next sprite
 
-;	ld a,(hl) : or a : jp z,4f : ld c,a : inc l ;number of lines, if zero lines then skip draw
-	ld c,(hl) : xor a : or c : jp z,4f : inc l ;number of lines, if zero lines then skip draw
-
+	ld a,(hl) : or a : jp z,4f : ld c,a : inc l ;number of lines, if zero lines then skip draw
 ;inc visible sprites	
 visibleSprites: equ $+1
 	ld a,0 : inc a : ld (visibleSprites),a
@@ -173,47 +172,22 @@ visibleSprites: equ $+1
 	ld sp,hl;where read tile
 	ex de,hl;put where to draw to hl
 
-;	ld a,8 : sub c : add a,a : add a,a : add a,a : add a,a ;*16
-	ld a,8 : sub c : ld c,a : add a,a : add a,a : add a,a : add a,a : sub c ;*15
-
-;	add a,SpriteJmpBase&255
-	ld (SetSpriteJmp+1),a
-;	ld c,a
-;	adc a,SpriteJmpBase>>8
-;	sub c
-;	ld (SetSpriteJmp+2),a
-
 	;store h
 	ld a,h
-;	ld b,32
-	ld bc,32*256+32*3
-SetSpriteJmp:
-	jp SpriteJmpBase
-	
-	org ($+255)&0FF00h
-	
-SpriteJmpBase:
+	ld b,32
 	dup 8
+	;ld a,h
 	pop de;get 2 bytes	
-	ld (hl),e : add b : ld h,a
-	ld (hl),d : add b : ld h,a
+	ld (hl),e : add b : ld h,a ;add hl,bc
+	ld (hl),d : add b : ld h,a;add hl,bc
 	pop de;get 2 bytes
-	ld (hl),e : add b : ld h,a
+	ld (hl),e : add b : ld h,a;add hl,bc
 	ld (hl),d
-
-;	or a : dec c : jp z,4f;check if line is ended	
-;	dec c : jp z,4f;check if line is ended	
-
-;	sub 32*3 : ld h,a;restore h
-	sub c : ld h,a;restore h
+	or a : dec c : jp z,4f;check if line is ended	
+	sub 32*3 : ld h,a;ld h,b;restore h
 	dec l;step down
 	edup
-
-;	org $-9
-;	org $-8
-;	org $-4
-	org $-3
-
+	org $-9
 4:
 
 spCounter equ $+1

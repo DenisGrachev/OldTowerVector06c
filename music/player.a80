@@ -441,8 +441,8 @@ disableTimer:
     ld hl,(chBuffer) : ld (hl),0;disable ch
     jp nextNote       ;перейти к следующей ноте
 enableTimer:
-    ld  A,(currentCh)        ;включить канал
-    OUT  (08),a       ;
+    ;ld  A,(currentCh)        ;включить канал
+    ;OUT  (08),a       ;
     ld hl,(chBuffer) : ld (hl),1;enable ch
     ld hl,(currentTick)
     ;и сразу поиграть следующую ноту
